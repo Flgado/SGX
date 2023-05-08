@@ -1,13 +1,53 @@
 enclave {
-    from "Sealing/Sealing.edl" import *;
+    include "../ocall_types.h"
 
     trusted {
-        /* define ECALLs here. */
-        public int generate_random_array([out] int array[64], size_t array_size);
+        public void ecall_insert_matrix_card([in, size=data_size] uint8_t *data, uint32_t data_size);
+
+        public void ecall_opendb([in, string] const char *db_name);
+        public void ecall_execute_sql([in, string] const char *sql);
+
+        public void ecall_get_text_size([in, string] const char *sql, [out] int *size);
+        public void ecall_get_text_value([in, string] const char *sql, [out, size=data_from_db_size] uint8_t *data_from_db, uint32_t data_from_db_size);        
+
+        public void ecall_close_db(void);
+
+        public void ecall_get_current_stored_value([out] uint8_t *result);
+        public int generate_matrix_card_values([in, out, size=array_size] uint8_t *array, size_t array_size);
+
+        public uint32_t get_sealed_data_size(uint32_t fsize);
+        public sgx_status_t seal_data([in, size=plaintext_size] uint8_t* plaintext, size_t plaintext_size, [out, size=sealed_size] uint8_t* sealed_data, size_t sealed_size);
+        public sgx_status_t unseal_data([in, size=sealed_size] uint8_t* sealed_data, size_t sealed_size, [out, size=plaintext_size] uint8_t* plaintext, size_t plaintext_size);
     };
 
     untrusted {
         /* define OCALLs here. */
         void ocall_print([in, string]const char* str);
+
+        void ocall_println_string([in, string] const char *str);
+        void ocall_print_string([in, string] const char *str);
+        void ocall_print_error([in, string] const char *str);
+        void ocall_text_print([in, size=data_size] uint8_t *data, uint32_t data_size);
+
+
+        int ocall_lstat([in, string] const char *path, [in, out, size=size] struct stat *buf, size_t size) propagate_errno;
+        int ocall_stat([in, string] const char *path, [in, out, size=size] struct stat *buf, size_t size);
+        int ocall_fstat(int fd, [in, out, size=size] struct stat* buf, size_t size);
+        int ocall_ftruncate(int fd, off_t length);
+
+        char* ocall_getcwd([out, size=size] char *buf, size_t size) propagate_errno;
+        int ocall_getpid(void);
+        int ocall_getuid(void);
+        char* ocall_getenv([in, string] const char *name);
+
+        int ocall_open64([in, string] const char *filename, int flags, mode_t mode);
+        int ocall_close(int fd);
+        off_t ocall_lseek64(int fd, off_t offset, int whence) propagate_errno;
+        int ocall_read(int fd, [out, size=count] void *buf, size_t count) propagate_errno;
+        int ocall_write(int fd, [in, size=count] const void *buf, size_t count) propagate_errno;
+        int ocall_fsync(int fd);
+        int ocall_fcntl(int fd, int cmd, [in, size=size] void* arg, size_t size) propagate_errno;
+        int ocall_fcntl64(int fd, int cmd, [in, size=size] void* arg, size_t size) propagate_errno;
+        int ocall_unlink([in, string] const char *pathname);
     };
 };
