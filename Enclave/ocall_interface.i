@@ -4010,17 +4010,26 @@ sgx_status_t sgx_ocall_switchless(const unsigned int index,
 
 # 1 "Enclave/../ocall_types.h" 1
 # 10 "Enclave/Enclave_t.h" 2
-# 19 "Enclave/Enclave_t.h"
+# 21 "Enclave/Enclave_t.h"
+typedef struct Coords {
+ uint8_t x;
+ uint8_t y;
+ uint8_t val;
+} Coords;
+
+
 void ecall_insert_matrix_card(uint8_t* data, uint32_t data_size);
 void ecall_opendb(const char* db_name);
 void ecall_execute_sql(const char* sql);
-void ecall_get_text_value(const char* sql, uint8_t** data_from_db, int* size);
+void ecall_get_text_size(const char* sql, int* size);
+void ecall_get_text_value(const char* sql, uint8_t* data_from_db, uint32_t data_from_db_size);
 void ecall_close_db(void);
 void ecall_get_current_stored_value(uint8_t* result);
 int generate_matrix_card_values(uint8_t* array, size_t array_size);
 uint32_t get_sealed_data_size(uint32_t fsize);
 sgx_status_t seal_data(uint8_t* plaintext, size_t plaintext_size, uint8_t* sealed_data, size_t sealed_size);
 sgx_status_t unseal_data(uint8_t* sealed_data, size_t sealed_size, uint8_t* plaintext, size_t plaintext_size);
+sgx_status_t ecall_validate_coords(uint32_t client_id, Coords* coords, uint8_t num_coords, uint8_t* result);
 
 sgx_status_t ocall_print(const char* str);
 sgx_status_t ocall_println_string(const char* str);

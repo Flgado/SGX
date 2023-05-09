@@ -60,6 +60,14 @@ typedef struct ms_unseal_data_t {
 	size_t ms_plaintext_size;
 } ms_unseal_data_t;
 
+typedef struct ms_ecall_validate_coords_t {
+	sgx_status_t ms_retval;
+	uint32_t ms_client_id;
+	Coords* ms_coords;
+	uint8_t ms_num_coords;
+	uint8_t* ms_result;
+} ms_ecall_validate_coords_t;
+
 typedef struct ms_ocall_print_t {
 	const char* ms_str;
 } ms_ocall_print_t;
@@ -511,6 +519,19 @@ sgx_status_t unseal_data(sgx_enclave_id_t eid, sgx_status_t* retval, uint8_t* se
 	ms.ms_plaintext = plaintext;
 	ms.ms_plaintext_size = plaintext_size;
 	status = sgx_ecall(eid, 10, &ocall_table_Enclave, &ms);
+	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
+	return status;
+}
+
+sgx_status_t ecall_validate_coords(sgx_enclave_id_t eid, sgx_status_t* retval, uint32_t client_id, Coords* coords, uint8_t num_coords, uint8_t* result)
+{
+	sgx_status_t status;
+	ms_ecall_validate_coords_t ms;
+	ms.ms_client_id = client_id;
+	ms.ms_coords = coords;
+	ms.ms_num_coords = num_coords;
+	ms.ms_result = result;
+	status = sgx_ecall(eid, 11, &ocall_table_Enclave, &ms);
 	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
 	return status;
 }

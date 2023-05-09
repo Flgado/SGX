@@ -170,3 +170,69 @@ sgx_status_t unseal_data(uint8_t* sealed_data, size_t sealed_size, uint8_t* plai
 
     return SGX_SUCCESS;
 }
+
+
+void bootstrap_persistence() {
+    ecall_opendb("matrix_cards.db");
+    const char *card_table_create_query = 
+        "CREATE TABLE IF NOT EXISTS card (\
+            id INTEGER PRIMARY KEY AUTOINCREMENT, \
+            matrix_data BLOB NOT NULL \
+        );";
+
+    ecall_execute_sql(card_table_create_query);
+}
+
+
+sgx_status_t ecall_validate_coords(uint32_t client_id, Coords *coords, uint8_t num_coords, uint8_t *result) {
+    const char *query = "SELECT matrix_data FROM card ORDER BY id DESC LIMIT 1;";
+    int size = 0;
+
+    sgx_status_t retval = SGX_SUCCESS;
+
+    bootstrap_persistence();
+
+    ecall_get_text_size(query, &size);
+    //printf("[-] enclave::ecall_get_text_size() = %d\n", size);
+
+    uint8_t *sealed_from_db = new uint8_t[size];
+    ecall_get_text_value(query, sealed_from_db, size);
+
+    ocall_println_string("\n[-] enclave::seal_from_db");
+    //pretty_print_arr(sealed_from_db, size - 500, 50);
+
+    ocall_println_string("[-] enclave::unsealing");
+
+    uint8_t *unsealed = new uint8_t[64];
+    uint32_t unsealed_sz = 64;
+
+    //ret = unseal_data(global_eid, &retval, sealed_data_buf, sealed_data_size, unsealed, unsealed_sz);
+    int ret = unseal_data(sealed_from_db, size, unsealed, unsealed_sz);
+
+    if (ret != SGX_SUCCESS) {
+        ocall_println_string("error");
+        free(sealed_from_db);
+        return SGX_SUCCESS;
+    }
+    else if (retval != SGX_SUCCESS) {
+        ocall_println_string("error 2");
+        free(sealed_from_db);
+        return SGX_SUCCESS;
+    }
+
+    ocall_println_string("[-] enclave::unsealed");
+
+    //pretty_print_arr(unsealed, unsealed_sz, 8);
+
+    for (uint8_t i = 0; i < num_coords; i++) {
+        int idx = coords[i].x * 8 + coords[i].y;
+        if (unsealed[idx] != coords[i].val) {
+            *result = idx;
+            return SGX_SUCCESS;
+        }
+    }
+
+    *result = 1000;
+
+    return SGX_SUCCESS;
+}

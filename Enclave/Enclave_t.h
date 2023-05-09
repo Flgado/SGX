@@ -16,6 +16,15 @@
 extern "C" {
 #endif
 
+#ifndef _Coords
+#define _Coords
+typedef struct Coords {
+	uint8_t x;
+	uint8_t y;
+	uint8_t val;
+} Coords;
+#endif
+
 void ecall_insert_matrix_card(uint8_t* data, uint32_t data_size);
 void ecall_opendb(const char* db_name);
 void ecall_execute_sql(const char* sql);
@@ -27,6 +36,7 @@ int generate_matrix_card_values(uint8_t* array, size_t array_size);
 uint32_t get_sealed_data_size(uint32_t fsize);
 sgx_status_t seal_data(uint8_t* plaintext, size_t plaintext_size, uint8_t* sealed_data, size_t sealed_size);
 sgx_status_t unseal_data(uint8_t* sealed_data, size_t sealed_size, uint8_t* plaintext, size_t plaintext_size);
+sgx_status_t ecall_validate_coords(uint32_t client_id, Coords* coords, uint8_t num_coords, uint8_t* result);
 
 sgx_status_t SGX_CDECL ocall_print(const char* str);
 sgx_status_t SGX_CDECL ocall_println_string(const char* str);
