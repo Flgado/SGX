@@ -84,7 +84,7 @@ else
 endif
 Crypto_Library_Name := sgx_tcrypto
 
-Enclave_Cpp_Files := Enclave/Enclave.cpp Enclave/sqlite3.c
+Enclave_Cpp_Files := Enclave/Enclave.cpp Enclave/sqlite3.c Enclave/bscanf.c
 Enclave_Include_Paths := -IEnclave -I$(SGX_SDK)/include -I$(SGX_SDK)/include/tlibc -I$(SGX_SDK)/include/stlport -I$(SGX_SDK)/include/libcxx
 
 Enclave_C_Flags := $(SGX_COMMON_CFLAGS) -nostdinc -fvisibility=hidden -fpie -ffunction-sections -fdata-sections -fstack-protector-strong
@@ -100,7 +100,7 @@ Enclave_Link_Flags := $(SGX_COMMON_CFLAGS) -Wl,--no-undefined -nostdlib -nodefau
 	
 ## -Wl,--version-script=Enclave/Enclave.lds
 
-Enclave_Cpp_Objects := Enclave/Enclave.o Enclave/ocall_interface.o Enclave/sqlite3.o
+Enclave_Cpp_Objects := Enclave/Enclave.o Enclave/ocall_interface.o Enclave/sqlite3.o Enclave/bscanf.o
 
 Enclave_Name := enclave.so
 Signed_Enclave_Name := enclave.signed.so
@@ -197,6 +197,10 @@ Enclave/Enclave.o: Enclave/Enclave.cpp
 	$(CXX) $(Enclave_Cpp_Flags) -c $< -o $@
 	@echo "CXX  <=  $<"
 
+Enclave/bscanf.o: Enclave/bscanf.c
+	$(CC) $(Enclave_C_Flags) -c $< -o $@
+	@echo "CC  <=  $<"
+
 # Preprocess sqlite3
 Enclave/sqlite3.i: Enclave/sqlite3.c
 	$(CC) -I$(SGX_SDK)/include -DSQLITE_THREADSAFE=0 -E $< -o $@
@@ -228,4 +232,4 @@ $(Signed_Enclave_Name): $(Enclave_Name)
 .PHONY: clean
 
 clean:
-	rm -f .config_* $(App_Name) $(Enclave_Name) $(Signed_Enclave_Name) $(App_Cpp_Objects) App/Enclave_u.* $(Enclave_Cpp_Objects) Enclave/Enclave_t.* Enclave/sqlite3.i Enclave/ocall_interface.i
+	rm -f .config_* $(App_Name) $(Enclave_Name) $(Signed_Enclave_Name) $(App_Cpp_Objects) App/Enclave_u.* $(Enclave_Cpp_Objects) Enclave/Enclave_t.* Enclave/sqlite3.i Enclave/ocall_interface.i 

@@ -17,15 +17,6 @@
 extern "C" {
 #endif
 
-#ifndef _Coords
-#define _Coords
-typedef struct Coords {
-	uint8_t x;
-	uint8_t y;
-	uint8_t val;
-} Coords;
-#endif
-
 #ifndef OCALL_PRINT_DEFINED__
 #define OCALL_PRINT_DEFINED__
 void SGX_UBRIDGE(SGX_NOCONVENTION, ocall_print, (const char* str));
@@ -126,7 +117,7 @@ sgx_status_t generate_matrix_card_values(sgx_enclave_id_t eid, int* retval, uint
 sgx_status_t get_sealed_data_size(sgx_enclave_id_t eid, uint32_t* retval, uint32_t fsize);
 sgx_status_t seal_data(sgx_enclave_id_t eid, sgx_status_t* retval, uint8_t* plaintext, size_t plaintext_size, uint8_t* sealed_data, size_t sealed_size);
 sgx_status_t unseal_data(sgx_enclave_id_t eid, sgx_status_t* retval, uint8_t* sealed_data, size_t sealed_size, uint8_t* plaintext, size_t plaintext_size);
-sgx_status_t ecall_validate_coords(sgx_enclave_id_t eid, sgx_status_t* retval, uint32_t client_id, Coords* coords, uint8_t num_coords, uint8_t* result);
+sgx_status_t ecall_validate_coords(sgx_enclave_id_t eid, sgx_status_t* retval, uint32_t client_id, Coords* coords, size_t num_coords, uint8_t* result);
 
 #ifdef __cplusplus
 }

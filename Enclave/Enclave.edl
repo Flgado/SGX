@@ -1,12 +1,6 @@
 enclave {
     include "../ocall_types.h"
 
-    struct Coords {
-        uint8_t x;
-        uint8_t y;
-        uint8_t val;
-    };
-
     trusted {
         public void ecall_insert_matrix_card([in, size=data_size] uint8_t *data, uint32_t data_size);
 
@@ -25,7 +19,7 @@ enclave {
         public sgx_status_t seal_data([in, size=plaintext_size] uint8_t* plaintext, size_t plaintext_size, [out, size=sealed_size] uint8_t* sealed_data, size_t sealed_size);
         public sgx_status_t unseal_data([in, size=sealed_size] uint8_t* sealed_data, size_t sealed_size, [out, size=plaintext_size] uint8_t* plaintext, size_t plaintext_size);
 
-        public sgx_status_t ecall_validate_coords(uint32_t client_id, [in] Coords *coords, uint8_t num_coords, [out] uint8_t *result);
+        public sgx_status_t ecall_validate_coords(uint32_t client_id, [in, count=num_coords] Coords* coords, size_t num_coords, [out] uint8_t *result);
     };
 
     untrusted {

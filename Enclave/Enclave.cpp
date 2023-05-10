@@ -183,8 +183,7 @@ void bootstrap_persistence() {
     ecall_execute_sql(card_table_create_query);
 }
 
-
-sgx_status_t ecall_validate_coords(uint32_t client_id, Coords *coords, uint8_t num_coords, uint8_t *result) {
+sgx_status_t ecall_validate_coords(uint32_t client_id, Coords *coords, size_t num_coords, uint8_t *result) {
     const char *query = "SELECT matrix_data FROM card ORDER BY id DESC LIMIT 1;";
     int size = 0;
 
@@ -193,13 +192,11 @@ sgx_status_t ecall_validate_coords(uint32_t client_id, Coords *coords, uint8_t n
     bootstrap_persistence();
 
     ecall_get_text_size(query, &size);
-    //printf("[-] enclave::ecall_get_text_size() = %d\n", size);
 
     uint8_t *sealed_from_db = new uint8_t[size];
     ecall_get_text_value(query, sealed_from_db, size);
 
     ocall_println_string("\n[-] enclave::seal_from_db");
-    //pretty_print_arr(sealed_from_db, size - 500, 50);
 
     ocall_println_string("[-] enclave::unsealing");
 
@@ -222,17 +219,22 @@ sgx_status_t ecall_validate_coords(uint32_t client_id, Coords *coords, uint8_t n
 
     ocall_println_string("[-] enclave::unsealed");
 
-    //pretty_print_arr(unsealed, unsealed_sz, 8);
+    for (size_t i = 0; i < num_coords; i++) {
+        //char* tmp_string = (char*) malloc(sizeof(int));
+        //snprintf(tmp_string, 5, "%d", coords[i].val);
 
-    for (uint8_t i = 0; i < num_coords; i++) {
+        //ocall_println_string(tmp_string);
+
+        //free(tmp_string);
+
         int idx = coords[i].x * 8 + coords[i].y;
         if (unsealed[idx] != coords[i].val) {
-            *result = idx;
+            *result = 0;
             return SGX_SUCCESS;
         }
     }
 
-    *result = 1000;
+    *result = 1;
 
     return SGX_SUCCESS;
 }

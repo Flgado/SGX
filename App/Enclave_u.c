@@ -64,7 +64,7 @@ typedef struct ms_ecall_validate_coords_t {
 	sgx_status_t ms_retval;
 	uint32_t ms_client_id;
 	Coords* ms_coords;
-	uint8_t ms_num_coords;
+	size_t ms_num_coords;
 	uint8_t* ms_result;
 } ms_ecall_validate_coords_t;
 
@@ -523,7 +523,7 @@ sgx_status_t unseal_data(sgx_enclave_id_t eid, sgx_status_t* retval, uint8_t* se
 	return status;
 }
 
-sgx_status_t ecall_validate_coords(sgx_enclave_id_t eid, sgx_status_t* retval, uint32_t client_id, Coords* coords, uint8_t num_coords, uint8_t* result)
+sgx_status_t ecall_validate_coords(sgx_enclave_id_t eid, sgx_status_t* retval, uint32_t client_id, Coords* coords, size_t num_coords, uint8_t* result)
 {
 	sgx_status_t status;
 	ms_ecall_validate_coords_t ms;

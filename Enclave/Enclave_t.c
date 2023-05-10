@@ -90,7 +90,7 @@ typedef struct ms_ecall_validate_coords_t {
 	sgx_status_t ms_retval;
 	uint32_t ms_client_id;
 	Coords* ms_coords;
-	uint8_t ms_num_coords;
+	size_t ms_num_coords;
 	uint8_t* ms_result;
 } ms_ecall_validate_coords_t;
 
@@ -845,12 +845,18 @@ static sgx_status_t SGX_CDECL sgx_ecall_validate_coords(void* pms)
 	}
 	sgx_status_t status = SGX_SUCCESS;
 	Coords* _tmp_coords = __in_ms.ms_coords;
-	size_t _len_coords = sizeof(Coords);
+	size_t _tmp_num_coords = __in_ms.ms_num_coords;
+	size_t _len_coords = _tmp_num_coords * sizeof(Coords);
 	Coords* _in_coords = NULL;
 	uint8_t* _tmp_result = __in_ms.ms_result;
 	size_t _len_result = sizeof(uint8_t);
 	uint8_t* _in_result = NULL;
 	sgx_status_t _in_retval;
+
+	if (sizeof(*_tmp_coords) != 0 &&
+		(size_t)_tmp_num_coords > (SIZE_MAX / sizeof(*_tmp_coords))) {
+		return SGX_ERROR_INVALID_PARAMETER;
+	}
 
 	CHECK_UNIQUE_POINTER(_tmp_coords, _len_coords);
 	CHECK_UNIQUE_POINTER(_tmp_result, _len_result);
@@ -886,7 +892,7 @@ static sgx_status_t SGX_CDECL sgx_ecall_validate_coords(void* pms)
 
 		memset((void*)_in_result, 0, _len_result);
 	}
-	_in_retval = ecall_validate_coords(__in_ms.ms_client_id, _in_coords, __in_ms.ms_num_coords, _in_result);
+	_in_retval = ecall_validate_coords(__in_ms.ms_client_id, _in_coords, _tmp_num_coords, _in_result);
 	if (memcpy_verw_s(&ms->ms_retval, sizeof(ms->ms_retval), &_in_retval, sizeof(_in_retval))) {
 		status = SGX_ERROR_UNEXPECTED;
 		goto err;

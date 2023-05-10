@@ -11,6 +11,12 @@
 #else
 // For trusted part copy required standard library declarations from stdlib headers
 
+typedef struct Coords {
+    uint8_t x;
+    uint8_t y;
+    uint8_t val;
+} Coords;
+
 // For ocall_interface.c do not redefine these types, otherwise define
 #ifndef DO_NOT_REDEFINE_FOR_OCALL
 
