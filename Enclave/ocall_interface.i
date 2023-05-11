@@ -4017,7 +4017,7 @@ typedef struct Coords {
 } Coords;
 # 10 "Enclave/Enclave_t.h" 2
 # 19 "Enclave/Enclave_t.h"
-void ecall_insert_matrix_card(uint8_t* data, uint32_t data_size);
+sgx_status_t ecall_insert_matrix_card(uint8_t* data, uint32_t data_size, int64_t* new_client_id);
 void ecall_opendb(const char* db_name);
 void ecall_execute_sql(const char* sql);
 void ecall_get_text_size(const char* sql, int* size);
@@ -4028,7 +4028,7 @@ int generate_matrix_card_values(uint8_t* array, size_t array_size);
 uint32_t get_sealed_data_size(uint32_t fsize);
 sgx_status_t seal_data(uint8_t* plaintext, size_t plaintext_size, uint8_t* sealed_data, size_t sealed_size);
 sgx_status_t unseal_data(uint8_t* sealed_data, size_t sealed_size, uint8_t* plaintext, size_t plaintext_size);
-sgx_status_t ecall_validate_coords(uint32_t client_id, const char* coords_str, size_t len, uint8_t* result);
+sgx_status_t ecall_validate_coords(uint32_t client_id, Coords* coords, size_t num_coords, uint8_t* result);
 
 sgx_status_t ocall_print(const char* str);
 sgx_status_t ocall_println_string(const char* str);

@@ -11,6 +11,17 @@ sqlite3 *db;
 
 uint8_t *current_stored_value;
 
+void bootstrap_persistence() {
+    ecall_opendb("matrix_cards.db");
+    const char *card_table_create_query = 
+        "CREATE TABLE IF NOT EXISTS card (\
+            id INTEGER PRIMARY KEY AUTOINCREMENT, \
+            matrix_data BLOB NOT NULL \
+        );";
+
+    ecall_execute_sql(card_table_create_query);
+}
+
 int generate_matrix_card_values(uint8_t *array, size_t array_size) {
     sgx_status_t status;
     for (int i = 0; i < array_size; i++) {
@@ -59,8 +70,8 @@ void ecall_opendb(const char *dbname) {
         ocall_println_string(sqlite3_errmsg(db));
         return;
     }
-    ocall_print_string("Enclave: Created database connection to ");
-    ocall_println_string(dbname);
+    //ocall_print_string("Enclave: Created database connection to ");
+    //ocall_println_string(dbname);
 }
 
 void ecall_execute_sql(const char *sql) {
@@ -74,6 +85,7 @@ void ecall_execute_sql(const char *sql) {
 }
 
 void ecall_insert_matrix_card(uint8_t *data, uint32_t data_size) {
+    bootstrap_persistence();
     const char *insert_stmt = "INSERT INTO card (matrix_data) VALUES (?);";
     sqlite3_stmt *stmt;
     int rc = sqlite3_prepare_v2(db, insert_stmt, -1, &stmt, 0);
@@ -81,6 +93,10 @@ void ecall_insert_matrix_card(uint8_t *data, uint32_t data_size) {
     rc = sqlite3_bind_blob(stmt, 1, data, data_size, SQLITE_STATIC);
     rc = sqlite3_step(stmt);
     sqlite3_finalize(stmt);
+
+    char query[100];
+    snprintf(query, sizeof(query), "\tnew_client_id = %ld", (int64_t) sqlite3_last_insert_rowid(db));
+    ocall_println_string(query);
 }
 
 void ecall_get_text_size(const char *sql, int *size) {
@@ -171,22 +187,11 @@ sgx_status_t unseal_data(uint8_t* sealed_data, size_t sealed_size, uint8_t* plai
     return SGX_SUCCESS;
 }
 
-
-void bootstrap_persistence() {
-    ecall_opendb("matrix_cards.db");
-    const char *card_table_create_query = 
-        "CREATE TABLE IF NOT EXISTS card (\
-            id INTEGER PRIMARY KEY AUTOINCREMENT, \
-            matrix_data BLOB NOT NULL \
-        );";
-
-    ecall_execute_sql(card_table_create_query);
-}
-
 sgx_status_t ecall_validate_coords(uint32_t client_id, Coords *coords, size_t num_coords, uint8_t *result) {
-    const char *query = "SELECT matrix_data FROM card ORDER BY id DESC LIMIT 1;";
+    char query[128];
+    snprintf(query, sizeof(query), "SELECT matrix_data FROM card WHERE id = %d", client_id);
+    
     int size = 0;
-
     sgx_status_t retval = SGX_SUCCESS;
 
     bootstrap_persistence();
@@ -203,7 +208,6 @@ sgx_status_t ecall_validate_coords(uint32_t client_id, Coords *coords, size_t nu
     uint8_t *unsealed = new uint8_t[64];
     uint32_t unsealed_sz = 64;
 
-    //ret = unseal_data(global_eid, &retval, sealed_data_buf, sealed_data_size, unsealed, unsealed_sz);
     int ret = unseal_data(sealed_from_db, size, unsealed, unsealed_sz);
 
     if (ret != SGX_SUCCESS) {
@@ -220,14 +224,7 @@ sgx_status_t ecall_validate_coords(uint32_t client_id, Coords *coords, size_t nu
     ocall_println_string("[-] enclave::unsealed");
 
     for (size_t i = 0; i < num_coords; i++) {
-        //char* tmp_string = (char*) malloc(sizeof(int));
-        //snprintf(tmp_string, 5, "%d", coords[i].val);
-
-        //ocall_println_string(tmp_string);
-
-        //free(tmp_string);
-
-        int idx = coords[i].x * 8 + coords[i].y;
+        int idx = coords[i].y * 8 + coords[i].x;
         if (unsealed[idx] != coords[i].val) {
             *result = 0;
             return SGX_SUCCESS;

@@ -12,7 +12,7 @@
 sgx_enclave_id_t global_eid = 0;
 
 // OCall implementations
-void ocall_print(const char* str) {
+void ocall_print(const char *str) {
     printf("%s\n", str);
 }
 
@@ -20,17 +20,17 @@ void ocall_print_error(const char *str) {
     std::cerr << str << std::endl;
 }
 
-void ocall_print_string(const char *str){
+void ocall_print_string(const char *str) {
     std::cout << str;
 }
 
-void ocall_println_string(const char *str){
+void ocall_println_string(const char *str) {
     std::cout << str << std::endl;
 }
 
 void bootstrap_persistence() {
     ecall_opendb(global_eid, "matrix_cards.db");
-    const char *card_table_create_query = 
+    const char *card_table_create_query =
         "CREATE TABLE IF NOT EXISTS card (\
             id INTEGER PRIMARY KEY AUTOINCREMENT, \
             matrix_data BLOB NOT NULL \
@@ -41,17 +41,21 @@ void bootstrap_persistence() {
 
 void pretty_print_arr(const uint8_t *data, size_t size, size_t max_per_line) {
     for (size_t i = 0; i < size; ++i) {
-        std::cout << std::setw(2) << std::setfill('0') << std::dec << static_cast<int>(data[i]) << ' ';
-        
+        if (i == 0) {
+            std::cout << "\t";
+        }
+        std::cout << std::setw(3) << std::setfill('0') << std::dec << static_cast<int>(data[i]) << ' ';
+
         if ((i + 1) % max_per_line == 0) {
-            std::cout << std::endl;
+            std::cout << std::endl
+                      << "\t";
         }
     }
     std::cout << std::dec << std::endl;
 }
 
 void ocall_text_print(uint8_t *data, uint32_t data_size) {
-    for(int i = 0;i < data_size;i++) {
+    for (int i = 0; i < data_size; i++) {
         std::cout << data[i];
     }
     return;
@@ -71,7 +75,7 @@ int parse_coords(char const *input, struct Coords **coords_arr) {
         ptr++;
     }
 
-    *coords_arr = (struct Coords *) malloc(count * sizeof(struct Coords));
+    *coords_arr = (struct Coords *)malloc(count * sizeof(struct Coords));
     if (!*coords_arr) {
         printf("error while parsing coordinates\n");
         exit(1);
@@ -79,14 +83,15 @@ int parse_coords(char const *input, struct Coords **coords_arr) {
 
     int index = 0;
     ptr = input;
-    while (sscanf(ptr, "%c%hhu=%hhu", 
-        &((*coords_arr)[index].x), &((*coords_arr)[index].y), &((*coords_arr)[index].val)) == 3) {
+    while (sscanf(ptr, "%c%hhu=%hhu", &((*coords_arr)[index].y), &((*coords_arr)[index].x), &((*coords_arr)[index].val)) == 3) {
+        (*coords_arr)[index].y = toupper((*coords_arr)[index].y) - 'A';
 
-        (*coords_arr)[index].x = toupper((*coords_arr)[index].x) - 'A';
         ptr = strchr(ptr, ',');
+
         if (!ptr) {
             break;
         }
+
         ptr++;
         index++;
     }
@@ -102,33 +107,29 @@ int main(int argc, char const *argv[]) {
 
     ocall_println_string("[-] enclave::starting...");
 
-    int ret;	
+    int ret;
     sgx_status_t retval;
     if (initialize_enclave(&global_eid, "enclave.token", "enclave.signed.so") < 0) {
         std::cout << "Fail to initialize enclave." << std::endl;
         return 1;
     }
 
-    ocall_println_string("[-] enclave::generate_matrix_card_values\n");
+    ocall_println_string("[-] enclave::started");
 
     if (strcmp(argv[1], "--generate") == 0) {
-        ocall_println_string("\tgeneration modee\n");
+        ocall_println_string("\t[+] enclave::generate_matrix_card_values");
 
         // Generate random array
-        uint8_t *array = (uint8_t*) malloc(MATRIX_CARD_SIZE * sizeof(uint8_t));
+        uint8_t *array = (uint8_t *)malloc(MATRIX_CARD_SIZE * sizeof(uint8_t));
         sgx_status_t status = generate_matrix_card_values(global_eid, &ret, array, MATRIX_CARD_SIZE);
         if (status != SGX_SUCCESS) {
-	    printf("Error: %s\n", strerror(status));
             return 1;
         }
 
-        ocall_println_string("[-] enclave::generated_matrix");
         pretty_print_arr(array, MATRIX_CARD_SIZE, 8);
 
+        ocall_println_string("\t[+] enclave::sealing");
 
-        ocall_println_string("\n[-] enclave::sealing");
-
-        bootstrap_persistence();
 
         uint32_t arr_size = sizeof(uint8_t) * MATRIX_CARD_SIZE;
         uint32_t sealed_data_size = 0;
@@ -153,7 +154,7 @@ int main(int argc, char const *argv[]) {
             return -1;
         }
 
-        ocall_println_string("\n[-] enclave::sealed");
+        ocall_println_string("\t[+] enclave::sealed");
         ecall_insert_matrix_card(global_eid, sealed_data_buf, sealed_data_size);
         return 0;
     }
@@ -167,49 +168,17 @@ int main(int argc, char const *argv[]) {
         struct Coords *coords_arr = NULL;
         int num_records = parse_coords(argv[3], &coords_arr);
 
+        printf("\n");
         for (int i = 0; i < num_records; i++) {
             printf("coords to check %d: x=%hhu, y=%hhu, val=%hhu\n", i, coords_arr[i].x, coords_arr[i].y, coords_arr[i].val);
         }
 
         uint8_t result = 0;
-        int ret = ecall_validate_coords(global_eid, &retval, 1, coords_arr, num_records, &result);
+        uint32_t client_id;
+        sscanf(argv[2], "%d", &client_id);
+        int ret = ecall_validate_coords(global_eid, &retval, client_id, coords_arr, num_records, &result);
         printf("result = %d\n", result);
 
-        //const char *query = "SELECT matrix_data FROM card ORDER BY id DESC LIMIT 1;";
-        //int size = 0;
-
-        //bootstrap_persistence();
-
-        //ecall_get_text_size(global_eid, query, &size);
-        //printf("[-] enclave::ecall_get_text_size() = %d\n", size);
-
-        //uint8_t *sealed_from_db = new uint8_t[size];
-        //ecall_get_text_value(global_eid, query, sealed_from_db, size);
-
-        //ocall_println_string("\n[-] enclave::seal_from_db");
-        //pretty_print_arr(sealed_from_db, size - 500, 50);
-
-        //ocall_println_string("[-] enclave::unsealing");
-
-        //uint8_t *unsealed = new uint8_t[64];
-        //uint32_t unsealed_sz = 64;
-
-        ////ret = unseal_data(global_eid, &retval, sealed_data_buf, sealed_data_size, unsealed, unsealed_sz);
-        //ret = unseal_data(global_eid, &retval, sealed_from_db, size, unsealed, unsealed_sz);
-
-        //if (ret != SGX_SUCCESS) {
-        //    ocall_println_string("error");
-        //    free(sealed_from_db);
-        //    return -1;
-        //}
-        //else if (retval != SGX_SUCCESS) {
-        //    ocall_println_string("error 2");
-        //    free(sealed_from_db);
-        //    return -1;
-        //}
-
-        //ocall_println_string("[-] enclave::unsealed");
-        //pretty_print_arr(unsealed, unsealed_sz, 8);
         return 0;
     }
 
