@@ -29,15 +29,29 @@ void ocall_println_string(const char *str) {
     std::cout << str << std::endl;
 }
 
-void bootstrap_persistence() {
-    ecall_opendb(global_eid, "matrix_cards.db");
-    const char *card_table_create_query =
-        "CREATE TABLE IF NOT EXISTS card (\
-            id INTEGER PRIMARY KEY AUTOINCREMENT, \
-            matrix_data BLOB NOT NULL \
-        );";
+void ocall_copy_file(const char* src_path, const char* dest_path) {
+    FILE* src_file = fopen(src_path, "rb");
+    if (src_file == NULL) {
+        printf("Unable to open source file for reading.\n");
+        return;
+    }
 
-    ecall_execute_sql(global_eid, card_table_create_query);
+    FILE* dest_file = fopen(dest_path, "wb");
+    if (dest_file == NULL) {
+        printf("Unable to open destination file for writing.\n");
+        fclose(src_file);
+        return;
+    }
+
+    char buffer[4096];
+    size_t bytes;
+
+    while ((bytes = fread(buffer, 1, sizeof(buffer), src_file)) > 0) {
+        fwrite(buffer, 1, bytes, dest_file);
+    }
+
+    fclose(src_file);
+    fclose(dest_file);
 }
 
 void pretty_print_arr(const uint8_t *data, size_t size, size_t max_per_line) {
@@ -168,10 +182,10 @@ int main(int argc, char const *argv[]) {
         struct Coords *coords_arr = NULL;
         int num_records = parse_coords(argv[3], &coords_arr);
 
-        printf("\n");
-        for (int i = 0; i < num_records; i++) {
-            printf("coords to check %d: x=%hhu, y=%hhu, val=%hhu\n", i, coords_arr[i].x, coords_arr[i].y, coords_arr[i].val);
-        }
+        //printf("\n");
+        //for (int i = 0; i < num_records; i++) {
+        //    printf("coords to check %d: x=%hhu, y=%hhu, val=%hhu\n", i, coords_arr[i].x, coords_arr[i].y, coords_arr[i].val);
+        //}
 
         uint8_t result = 0;
         uint32_t client_id;
@@ -180,7 +194,6 @@ int main(int argc, char const *argv[]) {
         time_t timestamp = time(NULL);
 
         int ret = ecall_validate_coords(global_eid, &retval, client_id, coords_arr, num_records, &result, (uint64_t) timestamp);
-        printf("result = %d\n", result);
 
         return 0;
     }

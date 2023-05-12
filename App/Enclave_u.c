@@ -1,48 +1,11 @@
 #include "Enclave_u.h"
 #include <errno.h>
 
-typedef struct ms_ecall_insert_matrix_card_t {
-	uint8_t* ms_data;
-	uint32_t ms_data_size;
-} ms_ecall_insert_matrix_card_t;
-
-typedef struct ms_ecall_opendb_t {
-	const char* ms_db_name;
-	size_t ms_db_name_len;
-} ms_ecall_opendb_t;
-
-typedef struct ms_ecall_execute_sql_t {
-	const char* ms_sql;
-	size_t ms_sql_len;
-} ms_ecall_execute_sql_t;
-
-typedef struct ms_ecall_get_text_size_t {
-	const char* ms_sql;
-	size_t ms_sql_len;
-	int* ms_size;
-} ms_ecall_get_text_size_t;
-
-typedef struct ms_ecall_get_text_value_t {
-	const char* ms_sql;
-	size_t ms_sql_len;
-	uint8_t* ms_data_from_db;
-	uint32_t ms_data_from_db_size;
-} ms_ecall_get_text_value_t;
-
-typedef struct ms_ecall_get_current_stored_value_t {
-	uint8_t* ms_result;
-} ms_ecall_get_current_stored_value_t;
-
 typedef struct ms_generate_matrix_card_values_t {
 	int ms_retval;
 	uint8_t* ms_array;
 	size_t ms_array_size;
 } ms_generate_matrix_card_values_t;
-
-typedef struct ms_get_sealed_data_size_t {
-	uint32_t ms_retval;
-	uint32_t ms_fsize;
-} ms_get_sealed_data_size_t;
 
 typedef struct ms_ecall_validate_coords_t {
 	sgx_status_t ms_retval;
@@ -185,6 +148,11 @@ typedef struct ms_ocall_unlink_t {
 	int ms_retval;
 	const char* ms_pathname;
 } ms_ocall_unlink_t;
+
+typedef struct ms_ocall_copy_file_t {
+	const char* ms_src_path;
+	const char* ms_dest_path;
+} ms_ocall_copy_file_t;
 
 static sgx_status_t SGX_CDECL Enclave_ocall_print(void* pms)
 {
@@ -362,11 +330,19 @@ static sgx_status_t SGX_CDECL Enclave_ocall_unlink(void* pms)
 	return SGX_SUCCESS;
 }
 
+static sgx_status_t SGX_CDECL Enclave_ocall_copy_file(void* pms)
+{
+	ms_ocall_copy_file_t* ms = SGX_CAST(ms_ocall_copy_file_t*, pms);
+	ocall_copy_file(ms->ms_src_path, ms->ms_dest_path);
+
+	return SGX_SUCCESS;
+}
+
 static const struct {
 	size_t nr_ocall;
-	void * table[22];
+	void * table[23];
 } ocall_table_Enclave = {
-	22,
+	23,
 	{
 		(void*)Enclave_ocall_print,
 		(void*)Enclave_ocall_println_string,
@@ -390,94 +366,16 @@ static const struct {
 		(void*)Enclave_ocall_fcntl,
 		(void*)Enclave_ocall_fcntl64,
 		(void*)Enclave_ocall_unlink,
+		(void*)Enclave_ocall_copy_file,
 	}
 };
-sgx_status_t ecall_insert_matrix_card(sgx_enclave_id_t eid, uint8_t* data, uint32_t data_size)
-{
-	sgx_status_t status;
-	ms_ecall_insert_matrix_card_t ms;
-	ms.ms_data = data;
-	ms.ms_data_size = data_size;
-	status = sgx_ecall(eid, 0, &ocall_table_Enclave, &ms);
-	return status;
-}
-
-sgx_status_t ecall_opendb(sgx_enclave_id_t eid, const char* db_name)
-{
-	sgx_status_t status;
-	ms_ecall_opendb_t ms;
-	ms.ms_db_name = db_name;
-	ms.ms_db_name_len = db_name ? strlen(db_name) + 1 : 0;
-	status = sgx_ecall(eid, 1, &ocall_table_Enclave, &ms);
-	return status;
-}
-
-sgx_status_t ecall_execute_sql(sgx_enclave_id_t eid, const char* sql)
-{
-	sgx_status_t status;
-	ms_ecall_execute_sql_t ms;
-	ms.ms_sql = sql;
-	ms.ms_sql_len = sql ? strlen(sql) + 1 : 0;
-	status = sgx_ecall(eid, 2, &ocall_table_Enclave, &ms);
-	return status;
-}
-
-sgx_status_t ecall_get_text_size(sgx_enclave_id_t eid, const char* sql, int* size)
-{
-	sgx_status_t status;
-	ms_ecall_get_text_size_t ms;
-	ms.ms_sql = sql;
-	ms.ms_sql_len = sql ? strlen(sql) + 1 : 0;
-	ms.ms_size = size;
-	status = sgx_ecall(eid, 3, &ocall_table_Enclave, &ms);
-	return status;
-}
-
-sgx_status_t ecall_get_text_value(sgx_enclave_id_t eid, const char* sql, uint8_t* data_from_db, uint32_t data_from_db_size)
-{
-	sgx_status_t status;
-	ms_ecall_get_text_value_t ms;
-	ms.ms_sql = sql;
-	ms.ms_sql_len = sql ? strlen(sql) + 1 : 0;
-	ms.ms_data_from_db = data_from_db;
-	ms.ms_data_from_db_size = data_from_db_size;
-	status = sgx_ecall(eid, 4, &ocall_table_Enclave, &ms);
-	return status;
-}
-
-sgx_status_t ecall_close_db(sgx_enclave_id_t eid)
-{
-	sgx_status_t status;
-	status = sgx_ecall(eid, 5, &ocall_table_Enclave, NULL);
-	return status;
-}
-
-sgx_status_t ecall_get_current_stored_value(sgx_enclave_id_t eid, uint8_t* result)
-{
-	sgx_status_t status;
-	ms_ecall_get_current_stored_value_t ms;
-	ms.ms_result = result;
-	status = sgx_ecall(eid, 6, &ocall_table_Enclave, &ms);
-	return status;
-}
-
 sgx_status_t generate_matrix_card_values(sgx_enclave_id_t eid, int* retval, uint8_t* array, size_t array_size)
 {
 	sgx_status_t status;
 	ms_generate_matrix_card_values_t ms;
 	ms.ms_array = array;
 	ms.ms_array_size = array_size;
-	status = sgx_ecall(eid, 7, &ocall_table_Enclave, &ms);
-	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
-	return status;
-}
-
-sgx_status_t get_sealed_data_size(sgx_enclave_id_t eid, uint32_t* retval, uint32_t fsize)
-{
-	sgx_status_t status;
-	ms_get_sealed_data_size_t ms;
-	ms.ms_fsize = fsize;
-	status = sgx_ecall(eid, 8, &ocall_table_Enclave, &ms);
+	status = sgx_ecall(eid, 0, &ocall_table_Enclave, &ms);
 	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
 	return status;
 }
@@ -491,7 +389,7 @@ sgx_status_t ecall_validate_coords(sgx_enclave_id_t eid, sgx_status_t* retval, u
 	ms.ms_num_coords = num_coords;
 	ms.ms_result = result;
 	ms.ms_timestamp = timestamp;
-	status = sgx_ecall(eid, 9, &ocall_table_Enclave, &ms);
+	status = sgx_ecall(eid, 1, &ocall_table_Enclave, &ms);
 	if (status == SGX_SUCCESS && retval) *retval = ms.ms_retval;
 	return status;
 }

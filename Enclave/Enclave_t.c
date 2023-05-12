@@ -27,48 +27,11 @@
 )
 
 
-typedef struct ms_ecall_insert_matrix_card_t {
-	uint8_t* ms_data;
-	uint32_t ms_data_size;
-} ms_ecall_insert_matrix_card_t;
-
-typedef struct ms_ecall_opendb_t {
-	const char* ms_db_name;
-	size_t ms_db_name_len;
-} ms_ecall_opendb_t;
-
-typedef struct ms_ecall_execute_sql_t {
-	const char* ms_sql;
-	size_t ms_sql_len;
-} ms_ecall_execute_sql_t;
-
-typedef struct ms_ecall_get_text_size_t {
-	const char* ms_sql;
-	size_t ms_sql_len;
-	int* ms_size;
-} ms_ecall_get_text_size_t;
-
-typedef struct ms_ecall_get_text_value_t {
-	const char* ms_sql;
-	size_t ms_sql_len;
-	uint8_t* ms_data_from_db;
-	uint32_t ms_data_from_db_size;
-} ms_ecall_get_text_value_t;
-
-typedef struct ms_ecall_get_current_stored_value_t {
-	uint8_t* ms_result;
-} ms_ecall_get_current_stored_value_t;
-
 typedef struct ms_generate_matrix_card_values_t {
 	int ms_retval;
 	uint8_t* ms_array;
 	size_t ms_array_size;
 } ms_generate_matrix_card_values_t;
-
-typedef struct ms_get_sealed_data_size_t {
-	uint32_t ms_retval;
-	uint32_t ms_fsize;
-} ms_get_sealed_data_size_t;
 
 typedef struct ms_ecall_validate_coords_t {
 	sgx_status_t ms_retval;
@@ -212,362 +175,10 @@ typedef struct ms_ocall_unlink_t {
 	const char* ms_pathname;
 } ms_ocall_unlink_t;
 
-static sgx_status_t SGX_CDECL sgx_ecall_insert_matrix_card(void* pms)
-{
-	CHECK_REF_POINTER(pms, sizeof(ms_ecall_insert_matrix_card_t));
-	//
-	// fence after pointer checks
-	//
-	sgx_lfence();
-	ms_ecall_insert_matrix_card_t* ms = SGX_CAST(ms_ecall_insert_matrix_card_t*, pms);
-	ms_ecall_insert_matrix_card_t __in_ms;
-	if (memcpy_s(&__in_ms, sizeof(ms_ecall_insert_matrix_card_t), ms, sizeof(ms_ecall_insert_matrix_card_t))) {
-		return SGX_ERROR_UNEXPECTED;
-	}
-	sgx_status_t status = SGX_SUCCESS;
-	uint8_t* _tmp_data = __in_ms.ms_data;
-	uint32_t _tmp_data_size = __in_ms.ms_data_size;
-	size_t _len_data = _tmp_data_size;
-	uint8_t* _in_data = NULL;
-
-	CHECK_UNIQUE_POINTER(_tmp_data, _len_data);
-
-	//
-	// fence after pointer checks
-	//
-	sgx_lfence();
-
-	if (_tmp_data != NULL && _len_data != 0) {
-		if ( _len_data % sizeof(*_tmp_data) != 0)
-		{
-			status = SGX_ERROR_INVALID_PARAMETER;
-			goto err;
-		}
-		_in_data = (uint8_t*)malloc(_len_data);
-		if (_in_data == NULL) {
-			status = SGX_ERROR_OUT_OF_MEMORY;
-			goto err;
-		}
-
-		if (memcpy_s(_in_data, _len_data, _tmp_data, _len_data)) {
-			status = SGX_ERROR_UNEXPECTED;
-			goto err;
-		}
-
-	}
-	ecall_insert_matrix_card(_in_data, _tmp_data_size);
-
-err:
-	if (_in_data) free(_in_data);
-	return status;
-}
-
-static sgx_status_t SGX_CDECL sgx_ecall_opendb(void* pms)
-{
-	CHECK_REF_POINTER(pms, sizeof(ms_ecall_opendb_t));
-	//
-	// fence after pointer checks
-	//
-	sgx_lfence();
-	ms_ecall_opendb_t* ms = SGX_CAST(ms_ecall_opendb_t*, pms);
-	ms_ecall_opendb_t __in_ms;
-	if (memcpy_s(&__in_ms, sizeof(ms_ecall_opendb_t), ms, sizeof(ms_ecall_opendb_t))) {
-		return SGX_ERROR_UNEXPECTED;
-	}
-	sgx_status_t status = SGX_SUCCESS;
-	const char* _tmp_db_name = __in_ms.ms_db_name;
-	size_t _len_db_name = __in_ms.ms_db_name_len ;
-	char* _in_db_name = NULL;
-
-	CHECK_UNIQUE_POINTER(_tmp_db_name, _len_db_name);
-
-	//
-	// fence after pointer checks
-	//
-	sgx_lfence();
-
-	if (_tmp_db_name != NULL && _len_db_name != 0) {
-		_in_db_name = (char*)malloc(_len_db_name);
-		if (_in_db_name == NULL) {
-			status = SGX_ERROR_OUT_OF_MEMORY;
-			goto err;
-		}
-
-		if (memcpy_s(_in_db_name, _len_db_name, _tmp_db_name, _len_db_name)) {
-			status = SGX_ERROR_UNEXPECTED;
-			goto err;
-		}
-
-		_in_db_name[_len_db_name - 1] = '\0';
-		if (_len_db_name != strlen(_in_db_name) + 1)
-		{
-			status = SGX_ERROR_UNEXPECTED;
-			goto err;
-		}
-	}
-	ecall_opendb((const char*)_in_db_name);
-
-err:
-	if (_in_db_name) free(_in_db_name);
-	return status;
-}
-
-static sgx_status_t SGX_CDECL sgx_ecall_execute_sql(void* pms)
-{
-	CHECK_REF_POINTER(pms, sizeof(ms_ecall_execute_sql_t));
-	//
-	// fence after pointer checks
-	//
-	sgx_lfence();
-	ms_ecall_execute_sql_t* ms = SGX_CAST(ms_ecall_execute_sql_t*, pms);
-	ms_ecall_execute_sql_t __in_ms;
-	if (memcpy_s(&__in_ms, sizeof(ms_ecall_execute_sql_t), ms, sizeof(ms_ecall_execute_sql_t))) {
-		return SGX_ERROR_UNEXPECTED;
-	}
-	sgx_status_t status = SGX_SUCCESS;
-	const char* _tmp_sql = __in_ms.ms_sql;
-	size_t _len_sql = __in_ms.ms_sql_len ;
-	char* _in_sql = NULL;
-
-	CHECK_UNIQUE_POINTER(_tmp_sql, _len_sql);
-
-	//
-	// fence after pointer checks
-	//
-	sgx_lfence();
-
-	if (_tmp_sql != NULL && _len_sql != 0) {
-		_in_sql = (char*)malloc(_len_sql);
-		if (_in_sql == NULL) {
-			status = SGX_ERROR_OUT_OF_MEMORY;
-			goto err;
-		}
-
-		if (memcpy_s(_in_sql, _len_sql, _tmp_sql, _len_sql)) {
-			status = SGX_ERROR_UNEXPECTED;
-			goto err;
-		}
-
-		_in_sql[_len_sql - 1] = '\0';
-		if (_len_sql != strlen(_in_sql) + 1)
-		{
-			status = SGX_ERROR_UNEXPECTED;
-			goto err;
-		}
-	}
-	ecall_execute_sql((const char*)_in_sql);
-
-err:
-	if (_in_sql) free(_in_sql);
-	return status;
-}
-
-static sgx_status_t SGX_CDECL sgx_ecall_get_text_size(void* pms)
-{
-	CHECK_REF_POINTER(pms, sizeof(ms_ecall_get_text_size_t));
-	//
-	// fence after pointer checks
-	//
-	sgx_lfence();
-	ms_ecall_get_text_size_t* ms = SGX_CAST(ms_ecall_get_text_size_t*, pms);
-	ms_ecall_get_text_size_t __in_ms;
-	if (memcpy_s(&__in_ms, sizeof(ms_ecall_get_text_size_t), ms, sizeof(ms_ecall_get_text_size_t))) {
-		return SGX_ERROR_UNEXPECTED;
-	}
-	sgx_status_t status = SGX_SUCCESS;
-	const char* _tmp_sql = __in_ms.ms_sql;
-	size_t _len_sql = __in_ms.ms_sql_len ;
-	char* _in_sql = NULL;
-	int* _tmp_size = __in_ms.ms_size;
-	size_t _len_size = sizeof(int);
-	int* _in_size = NULL;
-
-	CHECK_UNIQUE_POINTER(_tmp_sql, _len_sql);
-	CHECK_UNIQUE_POINTER(_tmp_size, _len_size);
-
-	//
-	// fence after pointer checks
-	//
-	sgx_lfence();
-
-	if (_tmp_sql != NULL && _len_sql != 0) {
-		_in_sql = (char*)malloc(_len_sql);
-		if (_in_sql == NULL) {
-			status = SGX_ERROR_OUT_OF_MEMORY;
-			goto err;
-		}
-
-		if (memcpy_s(_in_sql, _len_sql, _tmp_sql, _len_sql)) {
-			status = SGX_ERROR_UNEXPECTED;
-			goto err;
-		}
-
-		_in_sql[_len_sql - 1] = '\0';
-		if (_len_sql != strlen(_in_sql) + 1)
-		{
-			status = SGX_ERROR_UNEXPECTED;
-			goto err;
-		}
-	}
-	if (_tmp_size != NULL && _len_size != 0) {
-		if ( _len_size % sizeof(*_tmp_size) != 0)
-		{
-			status = SGX_ERROR_INVALID_PARAMETER;
-			goto err;
-		}
-		if ((_in_size = (int*)malloc(_len_size)) == NULL) {
-			status = SGX_ERROR_OUT_OF_MEMORY;
-			goto err;
-		}
-
-		memset((void*)_in_size, 0, _len_size);
-	}
-	ecall_get_text_size((const char*)_in_sql, _in_size);
-	if (_in_size) {
-		if (memcpy_verw_s(_tmp_size, _len_size, _in_size, _len_size)) {
-			status = SGX_ERROR_UNEXPECTED;
-			goto err;
-		}
-	}
-
-err:
-	if (_in_sql) free(_in_sql);
-	if (_in_size) free(_in_size);
-	return status;
-}
-
-static sgx_status_t SGX_CDECL sgx_ecall_get_text_value(void* pms)
-{
-	CHECK_REF_POINTER(pms, sizeof(ms_ecall_get_text_value_t));
-	//
-	// fence after pointer checks
-	//
-	sgx_lfence();
-	ms_ecall_get_text_value_t* ms = SGX_CAST(ms_ecall_get_text_value_t*, pms);
-	ms_ecall_get_text_value_t __in_ms;
-	if (memcpy_s(&__in_ms, sizeof(ms_ecall_get_text_value_t), ms, sizeof(ms_ecall_get_text_value_t))) {
-		return SGX_ERROR_UNEXPECTED;
-	}
-	sgx_status_t status = SGX_SUCCESS;
-	const char* _tmp_sql = __in_ms.ms_sql;
-	size_t _len_sql = __in_ms.ms_sql_len ;
-	char* _in_sql = NULL;
-	uint8_t* _tmp_data_from_db = __in_ms.ms_data_from_db;
-	uint32_t _tmp_data_from_db_size = __in_ms.ms_data_from_db_size;
-	size_t _len_data_from_db = _tmp_data_from_db_size;
-	uint8_t* _in_data_from_db = NULL;
-
-	CHECK_UNIQUE_POINTER(_tmp_sql, _len_sql);
-	CHECK_UNIQUE_POINTER(_tmp_data_from_db, _len_data_from_db);
-
-	//
-	// fence after pointer checks
-	//
-	sgx_lfence();
-
-	if (_tmp_sql != NULL && _len_sql != 0) {
-		_in_sql = (char*)malloc(_len_sql);
-		if (_in_sql == NULL) {
-			status = SGX_ERROR_OUT_OF_MEMORY;
-			goto err;
-		}
-
-		if (memcpy_s(_in_sql, _len_sql, _tmp_sql, _len_sql)) {
-			status = SGX_ERROR_UNEXPECTED;
-			goto err;
-		}
-
-		_in_sql[_len_sql - 1] = '\0';
-		if (_len_sql != strlen(_in_sql) + 1)
-		{
-			status = SGX_ERROR_UNEXPECTED;
-			goto err;
-		}
-	}
-	if (_tmp_data_from_db != NULL && _len_data_from_db != 0) {
-		if ( _len_data_from_db % sizeof(*_tmp_data_from_db) != 0)
-		{
-			status = SGX_ERROR_INVALID_PARAMETER;
-			goto err;
-		}
-		if ((_in_data_from_db = (uint8_t*)malloc(_len_data_from_db)) == NULL) {
-			status = SGX_ERROR_OUT_OF_MEMORY;
-			goto err;
-		}
-
-		memset((void*)_in_data_from_db, 0, _len_data_from_db);
-	}
-	ecall_get_text_value((const char*)_in_sql, _in_data_from_db, _tmp_data_from_db_size);
-	if (_in_data_from_db) {
-		if (memcpy_verw_s(_tmp_data_from_db, _len_data_from_db, _in_data_from_db, _len_data_from_db)) {
-			status = SGX_ERROR_UNEXPECTED;
-			goto err;
-		}
-	}
-
-err:
-	if (_in_sql) free(_in_sql);
-	if (_in_data_from_db) free(_in_data_from_db);
-	return status;
-}
-
-static sgx_status_t SGX_CDECL sgx_ecall_close_db(void* pms)
-{
-	sgx_status_t status = SGX_SUCCESS;
-	if (pms != NULL) return SGX_ERROR_INVALID_PARAMETER;
-	ecall_close_db();
-	return status;
-}
-
-static sgx_status_t SGX_CDECL sgx_ecall_get_current_stored_value(void* pms)
-{
-	CHECK_REF_POINTER(pms, sizeof(ms_ecall_get_current_stored_value_t));
-	//
-	// fence after pointer checks
-	//
-	sgx_lfence();
-	ms_ecall_get_current_stored_value_t* ms = SGX_CAST(ms_ecall_get_current_stored_value_t*, pms);
-	ms_ecall_get_current_stored_value_t __in_ms;
-	if (memcpy_s(&__in_ms, sizeof(ms_ecall_get_current_stored_value_t), ms, sizeof(ms_ecall_get_current_stored_value_t))) {
-		return SGX_ERROR_UNEXPECTED;
-	}
-	sgx_status_t status = SGX_SUCCESS;
-	uint8_t* _tmp_result = __in_ms.ms_result;
-	size_t _len_result = sizeof(uint8_t);
-	uint8_t* _in_result = NULL;
-
-	CHECK_UNIQUE_POINTER(_tmp_result, _len_result);
-
-	//
-	// fence after pointer checks
-	//
-	sgx_lfence();
-
-	if (_tmp_result != NULL && _len_result != 0) {
-		if ( _len_result % sizeof(*_tmp_result) != 0)
-		{
-			status = SGX_ERROR_INVALID_PARAMETER;
-			goto err;
-		}
-		if ((_in_result = (uint8_t*)malloc(_len_result)) == NULL) {
-			status = SGX_ERROR_OUT_OF_MEMORY;
-			goto err;
-		}
-
-		memset((void*)_in_result, 0, _len_result);
-	}
-	ecall_get_current_stored_value(_in_result);
-	if (_in_result) {
-		if (memcpy_verw_s(_tmp_result, _len_result, _in_result, _len_result)) {
-			status = SGX_ERROR_UNEXPECTED;
-			goto err;
-		}
-	}
-
-err:
-	if (_in_result) free(_in_result);
-	return status;
-}
+typedef struct ms_ocall_copy_file_t {
+	const char* ms_src_path;
+	const char* ms_dest_path;
+} ms_ocall_copy_file_t;
 
 static sgx_status_t SGX_CDECL sgx_generate_matrix_card_values(void* pms)
 {
@@ -627,32 +238,6 @@ static sgx_status_t SGX_CDECL sgx_generate_matrix_card_values(void* pms)
 
 err:
 	if (_in_array) free(_in_array);
-	return status;
-}
-
-static sgx_status_t SGX_CDECL sgx_get_sealed_data_size(void* pms)
-{
-	CHECK_REF_POINTER(pms, sizeof(ms_get_sealed_data_size_t));
-	//
-	// fence after pointer checks
-	//
-	sgx_lfence();
-	ms_get_sealed_data_size_t* ms = SGX_CAST(ms_get_sealed_data_size_t*, pms);
-	ms_get_sealed_data_size_t __in_ms;
-	if (memcpy_s(&__in_ms, sizeof(ms_get_sealed_data_size_t), ms, sizeof(ms_get_sealed_data_size_t))) {
-		return SGX_ERROR_UNEXPECTED;
-	}
-	sgx_status_t status = SGX_SUCCESS;
-	uint32_t _in_retval;
-
-
-	_in_retval = get_sealed_data_size(__in_ms.ms_fsize);
-	if (memcpy_verw_s(&ms->ms_retval, sizeof(ms->ms_retval), &_in_retval, sizeof(_in_retval))) {
-		status = SGX_ERROR_UNEXPECTED;
-		goto err;
-	}
-
-err:
 	return status;
 }
 
@@ -737,51 +322,44 @@ err:
 
 SGX_EXTERNC const struct {
 	size_t nr_ecall;
-	struct {void* ecall_addr; uint8_t is_priv; uint8_t is_switchless;} ecall_table[10];
+	struct {void* ecall_addr; uint8_t is_priv; uint8_t is_switchless;} ecall_table[2];
 } g_ecall_table = {
-	10,
+	2,
 	{
-		{(void*)(uintptr_t)sgx_ecall_insert_matrix_card, 0, 0},
-		{(void*)(uintptr_t)sgx_ecall_opendb, 0, 0},
-		{(void*)(uintptr_t)sgx_ecall_execute_sql, 0, 0},
-		{(void*)(uintptr_t)sgx_ecall_get_text_size, 0, 0},
-		{(void*)(uintptr_t)sgx_ecall_get_text_value, 0, 0},
-		{(void*)(uintptr_t)sgx_ecall_close_db, 0, 0},
-		{(void*)(uintptr_t)sgx_ecall_get_current_stored_value, 0, 0},
 		{(void*)(uintptr_t)sgx_generate_matrix_card_values, 0, 0},
-		{(void*)(uintptr_t)sgx_get_sealed_data_size, 0, 0},
 		{(void*)(uintptr_t)sgx_ecall_validate_coords, 0, 0},
 	}
 };
 
 SGX_EXTERNC const struct {
 	size_t nr_ocall;
-	uint8_t entry_table[22][10];
+	uint8_t entry_table[23][2];
 } g_dyn_entry_table = {
-	22,
+	23,
 	{
-		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
-		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
-		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
-		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
-		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
-		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
-		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
-		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
-		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
-		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
-		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
-		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
-		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
-		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
-		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
-		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
-		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
-		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
-		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
-		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
-		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
-		{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, },
+		{0, 0, },
+		{0, 0, },
+		{0, 0, },
+		{0, 0, },
+		{0, 0, },
+		{0, 0, },
+		{0, 0, },
+		{0, 0, },
+		{0, 0, },
+		{0, 0, },
+		{0, 0, },
+		{0, 0, },
+		{0, 0, },
+		{0, 0, },
+		{0, 0, },
+		{0, 0, },
+		{0, 0, },
+		{0, 0, },
+		{0, 0, },
+		{0, 0, },
+		{0, 0, },
+		{0, 0, },
+		{0, 0, },
 	}
 };
 
@@ -2060,6 +1638,80 @@ sgx_status_t SGX_CDECL ocall_unlink(int* retval, const char* pathname)
 				return SGX_ERROR_UNEXPECTED;
 			}
 		}
+	}
+	sgx_ocfree();
+	return status;
+}
+
+sgx_status_t SGX_CDECL ocall_copy_file(const char* src_path, const char* dest_path)
+{
+	sgx_status_t status = SGX_SUCCESS;
+	size_t _len_src_path = src_path ? strlen(src_path) + 1 : 0;
+	size_t _len_dest_path = dest_path ? strlen(dest_path) + 1 : 0;
+
+	ms_ocall_copy_file_t* ms = NULL;
+	size_t ocalloc_size = sizeof(ms_ocall_copy_file_t);
+	void *__tmp = NULL;
+
+
+	CHECK_ENCLAVE_POINTER(src_path, _len_src_path);
+	CHECK_ENCLAVE_POINTER(dest_path, _len_dest_path);
+
+	if (ADD_ASSIGN_OVERFLOW(ocalloc_size, (src_path != NULL) ? _len_src_path : 0))
+		return SGX_ERROR_INVALID_PARAMETER;
+	if (ADD_ASSIGN_OVERFLOW(ocalloc_size, (dest_path != NULL) ? _len_dest_path : 0))
+		return SGX_ERROR_INVALID_PARAMETER;
+
+	__tmp = sgx_ocalloc(ocalloc_size);
+	if (__tmp == NULL) {
+		sgx_ocfree();
+		return SGX_ERROR_UNEXPECTED;
+	}
+	ms = (ms_ocall_copy_file_t*)__tmp;
+	__tmp = (void *)((size_t)__tmp + sizeof(ms_ocall_copy_file_t));
+	ocalloc_size -= sizeof(ms_ocall_copy_file_t);
+
+	if (src_path != NULL) {
+		if (memcpy_verw_s(&ms->ms_src_path, sizeof(const char*), &__tmp, sizeof(const char*))) {
+			sgx_ocfree();
+			return SGX_ERROR_UNEXPECTED;
+		}
+		if (_len_src_path % sizeof(*src_path) != 0) {
+			sgx_ocfree();
+			return SGX_ERROR_INVALID_PARAMETER;
+		}
+		if (memcpy_verw_s(__tmp, ocalloc_size, src_path, _len_src_path)) {
+			sgx_ocfree();
+			return SGX_ERROR_UNEXPECTED;
+		}
+		__tmp = (void *)((size_t)__tmp + _len_src_path);
+		ocalloc_size -= _len_src_path;
+	} else {
+		ms->ms_src_path = NULL;
+	}
+
+	if (dest_path != NULL) {
+		if (memcpy_verw_s(&ms->ms_dest_path, sizeof(const char*), &__tmp, sizeof(const char*))) {
+			sgx_ocfree();
+			return SGX_ERROR_UNEXPECTED;
+		}
+		if (_len_dest_path % sizeof(*dest_path) != 0) {
+			sgx_ocfree();
+			return SGX_ERROR_INVALID_PARAMETER;
+		}
+		if (memcpy_verw_s(__tmp, ocalloc_size, dest_path, _len_dest_path)) {
+			sgx_ocfree();
+			return SGX_ERROR_UNEXPECTED;
+		}
+		__tmp = (void *)((size_t)__tmp + _len_dest_path);
+		ocalloc_size -= _len_dest_path;
+	} else {
+		ms->ms_dest_path = NULL;
+	}
+
+	status = sgx_ocall(22, ms);
+
+	if (status == SGX_SUCCESS) {
 	}
 	sgx_ocfree();
 	return status;

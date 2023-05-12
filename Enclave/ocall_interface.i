@@ -4017,15 +4017,7 @@ typedef struct Coords {
 } Coords;
 # 10 "Enclave/Enclave_t.h" 2
 # 19 "Enclave/Enclave_t.h"
-void ecall_insert_matrix_card(uint8_t* data, uint32_t data_size);
-void ecall_opendb(const char* db_name);
-void ecall_execute_sql(const char* sql);
-void ecall_get_text_size(const char* sql, int* size);
-void ecall_get_text_value(const char* sql, uint8_t* data_from_db, uint32_t data_from_db_size);
-void ecall_close_db(void);
-void ecall_get_current_stored_value(uint8_t* result);
 int generate_matrix_card_values(uint8_t* array, size_t array_size);
-uint32_t get_sealed_data_size(uint32_t fsize);
 sgx_status_t ecall_validate_coords(uint32_t client_id, Coords* coords, size_t num_coords, uint8_t* result, uint64_t timestamp);
 
 sgx_status_t ocall_print(const char* str);
@@ -4050,6 +4042,7 @@ sgx_status_t ocall_fsync(int* retval, int fd);
 sgx_status_t ocall_fcntl(int* retval, int fd, int cmd, void* arg, size_t size);
 sgx_status_t ocall_fcntl64(int* retval, int fd, int cmd, void* arg, size_t size);
 sgx_status_t ocall_unlink(int* retval, const char* pathname);
+sgx_status_t ocall_copy_file(const char* src_path, const char* dest_path);
 # 13 "Enclave/ocall_interface.c" 2
 
 
