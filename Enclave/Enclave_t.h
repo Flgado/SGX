@@ -25,9 +25,7 @@ void ecall_close_db(void);
 void ecall_get_current_stored_value(uint8_t* result);
 int generate_matrix_card_values(uint8_t* array, size_t array_size);
 uint32_t get_sealed_data_size(uint32_t fsize);
-sgx_status_t seal_data(uint8_t* plaintext, size_t plaintext_size, uint8_t* sealed_data, size_t sealed_size);
-sgx_status_t unseal_data(uint8_t* sealed_data, size_t sealed_size, uint8_t* plaintext, size_t plaintext_size);
-sgx_status_t ecall_validate_coords(uint32_t client_id, Coords* coords, size_t num_coords, uint8_t* result);
+sgx_status_t ecall_validate_coords(uint32_t client_id, Coords* coords, size_t num_coords, uint8_t* result, uint64_t timestamp);
 
 sgx_status_t SGX_CDECL ocall_print(const char* str);
 sgx_status_t SGX_CDECL ocall_println_string(const char* str);

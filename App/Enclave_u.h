@@ -115,9 +115,7 @@ sgx_status_t ecall_close_db(sgx_enclave_id_t eid);
 sgx_status_t ecall_get_current_stored_value(sgx_enclave_id_t eid, uint8_t* result);
 sgx_status_t generate_matrix_card_values(sgx_enclave_id_t eid, int* retval, uint8_t* array, size_t array_size);
 sgx_status_t get_sealed_data_size(sgx_enclave_id_t eid, uint32_t* retval, uint32_t fsize);
-sgx_status_t seal_data(sgx_enclave_id_t eid, sgx_status_t* retval, uint8_t* plaintext, size_t plaintext_size, uint8_t* sealed_data, size_t sealed_size);
-sgx_status_t unseal_data(sgx_enclave_id_t eid, sgx_status_t* retval, uint8_t* sealed_data, size_t sealed_size, uint8_t* plaintext, size_t plaintext_size);
-sgx_status_t ecall_validate_coords(sgx_enclave_id_t eid, sgx_status_t* retval, uint32_t client_id, Coords* coords, size_t num_coords, uint8_t* result);
+sgx_status_t ecall_validate_coords(sgx_enclave_id_t eid, sgx_status_t* retval, uint32_t client_id, Coords* coords, size_t num_coords, uint8_t* result, uint64_t timestamp);
 
 #ifdef __cplusplus
 }

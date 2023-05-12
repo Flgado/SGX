@@ -5,6 +5,7 @@
 #include "Enclave_u.h"
 #include "sgx_urts.h"
 #include "sgx_utils/sgx_utils.h"
+#include "time.h"
 
 #define MATRIX_CARD_SIZE 64
 #define ENCLAVE_FILE "Enclave.signed.so"
@@ -128,34 +129,33 @@ int main(int argc, char const *argv[]) {
 
         pretty_print_arr(array, MATRIX_CARD_SIZE, 8);
 
-        ocall_println_string("\t[+] enclave::sealing");
+        //ocall_println_string("\t[+] enclave::sealing");
 
+        //uint32_t arr_size = sizeof(uint8_t) * MATRIX_CARD_SIZE;
+        //uint32_t sealed_data_size = 0;
+        //ret = get_sealed_data_size(global_eid, &sealed_data_size, arr_size);
+        //if (ret != SGX_SUCCESS) {
+        //    return -1;
+        //}
 
-        uint32_t arr_size = sizeof(uint8_t) * MATRIX_CARD_SIZE;
-        uint32_t sealed_data_size = 0;
-        ret = get_sealed_data_size(global_eid, &sealed_data_size, arr_size);
-        if (ret != SGX_SUCCESS) {
-            return -1;
-        }
+        //// Seal the array
+        //uint8_t *sealed_data_buf = new uint8_t[sealed_data_size];
 
-        // Seal the array
-        uint8_t *sealed_data_buf = new uint8_t[sealed_data_size];
+        //ret = seal_data(global_eid, &retval, array, arr_size, sealed_data_buf, sealed_data_size);
 
-        ret = seal_data(global_eid, &retval, array, arr_size, sealed_data_buf, sealed_data_size);
+        //if (ret != SGX_SUCCESS) {
+        //    ocall_println_string("error");
+        //    free(sealed_data_buf);
+        //    return -1;
+        //}
+        //else if (retval != SGX_SUCCESS) {
+        //    ocall_println_string("error 2");
+        //    free(sealed_data_buf);
+        //    return -1;
+        //}
 
-        if (ret != SGX_SUCCESS) {
-            ocall_println_string("error");
-            free(sealed_data_buf);
-            return -1;
-        }
-        else if (retval != SGX_SUCCESS) {
-            ocall_println_string("error 2");
-            free(sealed_data_buf);
-            return -1;
-        }
-
-        ocall_println_string("\t[+] enclave::sealed");
-        ecall_insert_matrix_card(global_eid, sealed_data_buf, sealed_data_size);
+        //ocall_println_string("\t[+] enclave::sealed");
+        //ecall_insert_matrix_card(global_eid, sealed_data_buf, sealed_data_size);
         return 0;
     }
 
@@ -176,7 +176,10 @@ int main(int argc, char const *argv[]) {
         uint8_t result = 0;
         uint32_t client_id;
         sscanf(argv[2], "%d", &client_id);
-        int ret = ecall_validate_coords(global_eid, &retval, client_id, coords_arr, num_records, &result);
+
+        time_t timestamp = time(NULL);
+
+        int ret = ecall_validate_coords(global_eid, &retval, client_id, coords_arr, num_records, &result, (uint64_t) timestamp);
         printf("result = %d\n", result);
 
         return 0;
