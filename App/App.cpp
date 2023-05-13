@@ -182,10 +182,10 @@ int main(int argc, char const *argv[]) {
         struct Coords *coords_arr = NULL;
         int num_records = parse_coords(argv[3], &coords_arr);
 
-        //printf("\n");
-        //for (int i = 0; i < num_records; i++) {
-        //    printf("coords to check %d: x=%hhu, y=%hhu, val=%hhu\n", i, coords_arr[i].x, coords_arr[i].y, coords_arr[i].val);
-        //}
+        printf("\n");
+        for (int i = 0; i < num_records; i++) {
+            printf("coords to check %d: x=%hhu, y=%hhu, val=%hhu\n", i, coords_arr[i].x, coords_arr[i].y, coords_arr[i].val);
+        }
 
         uint8_t result = 0;
         uint32_t client_id;
@@ -194,6 +194,8 @@ int main(int argc, char const *argv[]) {
         time_t timestamp = time(NULL);
 
         int ret = ecall_validate_coords(global_eid, &retval, client_id, coords_arr, num_records, &result, (uint64_t) timestamp);
+
+        printf("\n -- validation result %s\n", result == 1 ? "true": "false");
 
         return 0;
     }

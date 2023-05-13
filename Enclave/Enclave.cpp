@@ -431,8 +431,8 @@ int generate_matrix_card_values(uint8_t *array, size_t array_size) {
     std::vector<uint8_t> serialized = serialize(card);
     uint32_t sealed_data_size = get_sealed_data_size(serialized.size());
 
-    snprintf(query, sizeof(query), "sealed 1 %d", sealed_data_size);
-    ocall_println_string(query);
+    //snprintf(query, sizeof(query), "sealed 1 %d", sealed_data_size);
+    //ocall_println_string(query);
 
     uint8_t *sealed = new uint8_t[sealed_data_size];
 
@@ -537,10 +537,10 @@ sgx_status_t ecall_validate_coords(uint32_t client_id, Coords *coords, size_t nu
 
     for (const auto &entry : card.log) {
         uint64_t ts = (uint64_t) entry.first;
-        bool result = (bool) entry.second;
+        bool validation_result = (bool) entry.second;
 
         char buffer[1000];
-        snprintf(buffer, sizeof(buffer), "\t [+] timestamp: %lu, validation result: %d", ts, result);
+        snprintf(buffer, sizeof(buffer), "\t [+] timestamp: %lu, validation result: %d", ts, validation_result);
         ocall_println_string(buffer);
     }
 
