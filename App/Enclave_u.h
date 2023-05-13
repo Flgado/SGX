@@ -111,7 +111,7 @@ void SGX_UBRIDGE(SGX_NOCONVENTION, ocall_copy_file, (const char* src_path, const
 #endif
 
 sgx_status_t generate_matrix_card_values(sgx_enclave_id_t eid, int* retval, uint8_t* array, size_t array_size);
-sgx_status_t ecall_validate_coords(sgx_enclave_id_t eid, sgx_status_t* retval, uint32_t client_id, Coords* coords, size_t num_coords, uint8_t* result, uint64_t timestamp);
+sgx_status_t ecall_validate_coords(sgx_enclave_id_t eid, sgx_status_t* retval, uint32_t client_id, Coords* coords, size_t num_coords, int8_t* result, uint64_t timestamp);
 
 #ifdef __cplusplus
 }

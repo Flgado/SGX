@@ -38,7 +38,7 @@ typedef struct ms_ecall_validate_coords_t {
 	uint32_t ms_client_id;
 	Coords* ms_coords;
 	size_t ms_num_coords;
-	uint8_t* ms_result;
+	int8_t* ms_result;
 	uint64_t ms_timestamp;
 } ms_ecall_validate_coords_t;
 
@@ -258,9 +258,9 @@ static sgx_status_t SGX_CDECL sgx_ecall_validate_coords(void* pms)
 	size_t _tmp_num_coords = __in_ms.ms_num_coords;
 	size_t _len_coords = _tmp_num_coords * sizeof(Coords);
 	Coords* _in_coords = NULL;
-	uint8_t* _tmp_result = __in_ms.ms_result;
-	size_t _len_result = sizeof(uint8_t);
-	uint8_t* _in_result = NULL;
+	int8_t* _tmp_result = __in_ms.ms_result;
+	size_t _len_result = sizeof(int8_t);
+	int8_t* _in_result = NULL;
 	sgx_status_t _in_retval;
 
 	if (sizeof(*_tmp_coords) != 0 &&
@@ -295,7 +295,7 @@ static sgx_status_t SGX_CDECL sgx_ecall_validate_coords(void* pms)
 			status = SGX_ERROR_INVALID_PARAMETER;
 			goto err;
 		}
-		if ((_in_result = (uint8_t*)malloc(_len_result)) == NULL) {
+		if ((_in_result = (int8_t*)malloc(_len_result)) == NULL) {
 			status = SGX_ERROR_OUT_OF_MEMORY;
 			goto err;
 		}

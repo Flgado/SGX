@@ -481,7 +481,16 @@ int generate_matrix_card_values(uint8_t *array, size_t array_size) {
     return SGX_SUCCESS;
 }
 
-sgx_status_t ecall_validate_coords(uint32_t client_id, Coords *coords, size_t num_coords, uint8_t *result, uint64_t timestamp) {
+bool validate_timestamp(uint64_t timestamp, std::vector<std::pair<uint64_t, bool>> log) {
+    uint64_t last_access = log.back().first;
+    if (timestamp < last_access) {
+        return false;
+    }
+
+    return true;
+}
+
+sgx_status_t ecall_validate_coords(uint32_t client_id, Coords *coords, size_t num_coords, int8_t *result, uint64_t timestamp) {
     bootstrap_persistence();
 
     sgx_status_t retval = SGX_SUCCESS;
@@ -509,10 +518,18 @@ sgx_status_t ecall_validate_coords(uint32_t client_id, Coords *coords, size_t nu
     uint8_t *unsealed = (uint8_t*) malloc(unsealed_sz * sizeof(uint8_t));
 
     ret = unseal_data(data_from_db, unsealed, unsealed_sz);
+    ocall_println_string("[-] enclave::unsealed");
+    ocall_println_string("[-] enclave::deserializing"); 
 
     Card card = deserialize(std::vector<uint8_t>(unsealed, unsealed + unsealed_sz));
 
-    ocall_println_string("[-] enclave::unsealed");
+    bool timestamp_is_valid = validate_timestamp(timestamp, card.log);
+
+    if (!timestamp_is_valid) {
+        *result = -1;
+        close_db();
+        return SGX_SUCCESS;
+    }
 
     *result = 1;
     for (size_t i = 0; i < num_coords; i++) {

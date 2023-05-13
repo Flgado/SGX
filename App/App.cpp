@@ -187,15 +187,21 @@ int main(int argc, char const *argv[]) {
             printf("coords to check %d: x=%hhu, y=%hhu, val=%hhu\n", i, coords_arr[i].x, coords_arr[i].y, coords_arr[i].val);
         }
 
-        uint8_t result = 0;
+        int8_t result = 0;
         uint32_t client_id;
         sscanf(argv[2], "%d", &client_id);
 
         time_t timestamp = time(NULL);
+        //uint64_t timestamp = 100000;
 
         int ret = ecall_validate_coords(global_eid, &retval, client_id, coords_arr, num_records, &result, (uint64_t) timestamp);
 
-        printf("\n -- validation result %s\n", result == 1 ? "true": "false");
+        if (result == -1) {
+            printf("TIMESTAMP CHECK FAILED\n");
+        }
+        else {
+            printf("\n -- validation result %s\n", result == 1 ? "true": "false");
+        }
 
         return 0;
     }

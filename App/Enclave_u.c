@@ -12,7 +12,7 @@ typedef struct ms_ecall_validate_coords_t {
 	uint32_t ms_client_id;
 	Coords* ms_coords;
 	size_t ms_num_coords;
-	uint8_t* ms_result;
+	int8_t* ms_result;
 	uint64_t ms_timestamp;
 } ms_ecall_validate_coords_t;
 
@@ -380,7 +380,7 @@ sgx_status_t generate_matrix_card_values(sgx_enclave_id_t eid, int* retval, uint
 	return status;
 }
 
-sgx_status_t ecall_validate_coords(sgx_enclave_id_t eid, sgx_status_t* retval, uint32_t client_id, Coords* coords, size_t num_coords, uint8_t* result, uint64_t timestamp)
+sgx_status_t ecall_validate_coords(sgx_enclave_id_t eid, sgx_status_t* retval, uint32_t client_id, Coords* coords, size_t num_coords, int8_t* result, uint64_t timestamp)
 {
 	sgx_status_t status;
 	ms_ecall_validate_coords_t ms;

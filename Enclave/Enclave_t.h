@@ -17,7 +17,7 @@ extern "C" {
 #endif
 
 int generate_matrix_card_values(uint8_t* array, size_t array_size);
-sgx_status_t ecall_validate_coords(uint32_t client_id, Coords* coords, size_t num_coords, uint8_t* result, uint64_t timestamp);
+sgx_status_t ecall_validate_coords(uint32_t client_id, Coords* coords, size_t num_coords, int8_t* result, uint64_t timestamp);
 
 sgx_status_t SGX_CDECL ocall_print(const char* str);
 sgx_status_t SGX_CDECL ocall_println_string(const char* str);
