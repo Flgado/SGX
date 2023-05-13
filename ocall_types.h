@@ -17,6 +17,19 @@ typedef struct Coords {
     uint8_t val;
 } Coords;
 
+//typedef struct Pair {
+//    uint64_t timestamp;
+//    bool second;
+//} Pair;
+//
+//typedef struct Card {
+//    uint32_t client_id;
+//    uint8_t encrypted_data[64];
+//    Pair log[1000000];
+//    size_t log_length; 
+//} Card;
+
+
 // For ocall_interface.c do not redefine these types, otherwise define
 #ifndef DO_NOT_REDEFINE_FOR_OCALL
 

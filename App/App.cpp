@@ -5,6 +5,7 @@
 #include "Enclave_u.h"
 #include "sgx_urts.h"
 #include "sgx_utils/sgx_utils.h"
+#include "time.h"
 
 #define MATRIX_CARD_SIZE 64
 #define ENCLAVE_FILE "Enclave.signed.so"
@@ -28,15 +29,29 @@ void ocall_println_string(const char *str) {
     std::cout << str << std::endl;
 }
 
-void bootstrap_persistence() {
-    ecall_opendb(global_eid, "matrix_cards.db");
-    const char *card_table_create_query =
-        "CREATE TABLE IF NOT EXISTS card (\
-            id INTEGER PRIMARY KEY AUTOINCREMENT, \
-            matrix_data BLOB NOT NULL \
-        );";
+void ocall_copy_file(const char* src_path, const char* dest_path) {
+    FILE* src_file = fopen(src_path, "rb");
+    if (src_file == NULL) {
+        printf("Unable to open source file for reading.\n");
+        return;
+    }
 
-    ecall_execute_sql(global_eid, card_table_create_query);
+    FILE* dest_file = fopen(dest_path, "wb");
+    if (dest_file == NULL) {
+        printf("Unable to open destination file for writing.\n");
+        fclose(src_file);
+        return;
+    }
+
+    char buffer[4096];
+    size_t bytes;
+
+    while ((bytes = fread(buffer, 1, sizeof(buffer), src_file)) > 0) {
+        fwrite(buffer, 1, bytes, dest_file);
+    }
+
+    fclose(src_file);
+    fclose(dest_file);
 }
 
 void pretty_print_arr(const uint8_t *data, size_t size, size_t max_per_line) {
@@ -128,34 +143,33 @@ int main(int argc, char const *argv[]) {
 
         pretty_print_arr(array, MATRIX_CARD_SIZE, 8);
 
-        ocall_println_string("\t[+] enclave::sealing");
+        //ocall_println_string("\t[+] enclave::sealing");
 
+        //uint32_t arr_size = sizeof(uint8_t) * MATRIX_CARD_SIZE;
+        //uint32_t sealed_data_size = 0;
+        //ret = get_sealed_data_size(global_eid, &sealed_data_size, arr_size);
+        //if (ret != SGX_SUCCESS) {
+        //    return -1;
+        //}
 
-        uint32_t arr_size = sizeof(uint8_t) * MATRIX_CARD_SIZE;
-        uint32_t sealed_data_size = 0;
-        ret = get_sealed_data_size(global_eid, &sealed_data_size, arr_size);
-        if (ret != SGX_SUCCESS) {
-            return -1;
-        }
+        //// Seal the array
+        //uint8_t *sealed_data_buf = new uint8_t[sealed_data_size];
 
-        // Seal the array
-        uint8_t *sealed_data_buf = new uint8_t[sealed_data_size];
+        //ret = seal_data(global_eid, &retval, array, arr_size, sealed_data_buf, sealed_data_size);
 
-        ret = seal_data(global_eid, &retval, array, arr_size, sealed_data_buf, sealed_data_size);
+        //if (ret != SGX_SUCCESS) {
+        //    ocall_println_string("error");
+        //    free(sealed_data_buf);
+        //    return -1;
+        //}
+        //else if (retval != SGX_SUCCESS) {
+        //    ocall_println_string("error 2");
+        //    free(sealed_data_buf);
+        //    return -1;
+        //}
 
-        if (ret != SGX_SUCCESS) {
-            ocall_println_string("error");
-            free(sealed_data_buf);
-            return -1;
-        }
-        else if (retval != SGX_SUCCESS) {
-            ocall_println_string("error 2");
-            free(sealed_data_buf);
-            return -1;
-        }
-
-        ocall_println_string("\t[+] enclave::sealed");
-        ecall_insert_matrix_card(global_eid, sealed_data_buf, sealed_data_size);
+        //ocall_println_string("\t[+] enclave::sealed");
+        //ecall_insert_matrix_card(global_eid, sealed_data_buf, sealed_data_size);
         return 0;
     }
 
@@ -176,8 +190,12 @@ int main(int argc, char const *argv[]) {
         uint8_t result = 0;
         uint32_t client_id;
         sscanf(argv[2], "%d", &client_id);
-        int ret = ecall_validate_coords(global_eid, &retval, client_id, coords_arr, num_records, &result);
-        printf("result = %d\n", result);
+
+        time_t timestamp = time(NULL);
+
+        int ret = ecall_validate_coords(global_eid, &retval, client_id, coords_arr, num_records, &result, (uint64_t) timestamp);
+
+        printf("\n -- validation result %s\n", result == 1 ? "true": "false");
 
         return 0;
     }

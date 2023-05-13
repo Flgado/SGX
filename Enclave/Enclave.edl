@@ -2,24 +2,8 @@ enclave {
     include "../ocall_types.h"
 
     trusted {
-        public void ecall_insert_matrix_card([in, size=data_size] uint8_t *data, uint32_t data_size);
-
-        public void ecall_opendb([in, string] const char *db_name);
-        public void ecall_execute_sql([in, string] const char *sql);
-
-        public void ecall_get_text_size([in, string] const char *sql, [out] int *size);
-        public void ecall_get_text_value([in, string] const char *sql, [out, size=data_from_db_size] uint8_t *data_from_db, uint32_t data_from_db_size);        
-
-        public void ecall_close_db(void);
-
-        public void ecall_get_current_stored_value([out] uint8_t *result);
         public int generate_matrix_card_values([in, out, size=array_size] uint8_t *array, size_t array_size);
-
-        public uint32_t get_sealed_data_size(uint32_t fsize);
-        public sgx_status_t seal_data([in, size=plaintext_size] uint8_t* plaintext, size_t plaintext_size, [out, size=sealed_size] uint8_t* sealed_data, size_t sealed_size);
-        public sgx_status_t unseal_data([in, size=sealed_size] uint8_t* sealed_data, size_t sealed_size, [out, size=plaintext_size] uint8_t* plaintext, size_t plaintext_size);
-
-        public sgx_status_t ecall_validate_coords(uint32_t client_id, [in, count=num_coords] Coords* coords, size_t num_coords, [out] uint8_t *result);
+        public sgx_status_t ecall_validate_coords(uint32_t client_id, [in, count=num_coords] Coords* coords, size_t num_coords, [out] uint8_t *result, uint64_t timestamp);
     };
 
     untrusted {
@@ -51,5 +35,7 @@ enclave {
         int ocall_fcntl(int fd, int cmd, [in, size=size] void* arg, size_t size) propagate_errno;
         int ocall_fcntl64(int fd, int cmd, [in, size=size] void* arg, size_t size) propagate_errno;
         int ocall_unlink([in, string] const char *pathname);
+
+        void ocall_copy_file([in, string] const char* src_path, [in, string] const char* dest_path);
     };
 };
