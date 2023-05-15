@@ -2,11 +2,15 @@ enclave {
     include "../ocall_types.h"
 
     trusted {
-        public int generate_matrix_card_values([in, out, size=array_size] uint8_t *array, size_t array_size);
+        public int generate_matrix_card_values(uint32_t client_id, [in, out, size=array_size] uint8_t *array, size_t array_size);
         public sgx_status_t ecall_validate_coords(uint32_t client_id, [in, count=num_coords] Coords* coords, size_t num_coords, [out] uint8_t *result, uint64_t timestamp);
     };
 
     untrusted {
+        int ocall_write_sealed_data(int client_id, [in, size=sealed_data_size] uint8_t *sealed_data, size_t sealed_data_size);
+        int ocall_get_sealed_data_size(int client_id, [out] size_t* file_size);
+        int ocall_read_sealed_data(int client_id, [out, size=data_size] uint8_t* data, size_t data_size);
+
         /* define OCALLs here. */
         void ocall_print([in, string]const char* str);
 
@@ -14,27 +18,6 @@ enclave {
         void ocall_print_string([in, string] const char *str);
         void ocall_print_error([in, string] const char *str);
         void ocall_text_print([in, size=data_size] uint8_t *data, uint32_t data_size);
-
-
-        int ocall_lstat([in, string] const char *path, [in, out, size=size] struct stat *buf, size_t size) propagate_errno;
-        int ocall_stat([in, string] const char *path, [in, out, size=size] struct stat *buf, size_t size);
-        int ocall_fstat(int fd, [in, out, size=size] struct stat* buf, size_t size);
-        int ocall_ftruncate(int fd, off_t length);
-
-        char* ocall_getcwd([out, size=size] char *buf, size_t size) propagate_errno;
-        int ocall_getpid(void);
-        int ocall_getuid(void);
-        char* ocall_getenv([in, string] const char *name);
-
-        int ocall_open64([in, string] const char *filename, int flags, mode_t mode);
-        int ocall_close(int fd);
-        off_t ocall_lseek64(int fd, off_t offset, int whence) propagate_errno;
-        int ocall_read(int fd, [out, size=count] void *buf, size_t count) propagate_errno;
-        int ocall_write(int fd, [in, size=count] const void *buf, size_t count) propagate_errno;
-        int ocall_fsync(int fd);
-        int ocall_fcntl(int fd, int cmd, [in, size=size] void* arg, size_t size) propagate_errno;
-        int ocall_fcntl64(int fd, int cmd, [in, size=size] void* arg, size_t size) propagate_errno;
-        int ocall_unlink([in, string] const char *pathname);
 
         void ocall_copy_file([in, string] const char* src_path, [in, string] const char* dest_path);
     };

@@ -29,6 +29,7 @@
 
 typedef struct ms_generate_matrix_card_values_t {
 	int ms_retval;
+	uint32_t ms_client_id;
 	uint8_t* ms_array;
 	size_t ms_array_size;
 } ms_generate_matrix_card_values_t;
@@ -41,6 +42,26 @@ typedef struct ms_ecall_validate_coords_t {
 	uint8_t* ms_result;
 	uint64_t ms_timestamp;
 } ms_ecall_validate_coords_t;
+
+typedef struct ms_ocall_write_sealed_data_t {
+	int ms_retval;
+	int ms_client_id;
+	uint8_t* ms_sealed_data;
+	size_t ms_sealed_data_size;
+} ms_ocall_write_sealed_data_t;
+
+typedef struct ms_ocall_get_sealed_data_size_t {
+	int ms_retval;
+	int ms_client_id;
+	size_t* ms_file_size;
+} ms_ocall_get_sealed_data_size_t;
+
+typedef struct ms_ocall_read_sealed_data_t {
+	int ms_retval;
+	int ms_client_id;
+	uint8_t* ms_data;
+	size_t ms_data_size;
+} ms_ocall_read_sealed_data_t;
 
 typedef struct ms_ocall_print_t {
 	const char* ms_str;
@@ -62,118 +83,6 @@ typedef struct ms_ocall_text_print_t {
 	uint8_t* ms_data;
 	uint32_t ms_data_size;
 } ms_ocall_text_print_t;
-
-typedef struct ms_ocall_lstat_t {
-	int ms_retval;
-	int ocall_errno;
-	const char* ms_path;
-	struct stat* ms_buf;
-	size_t ms_size;
-} ms_ocall_lstat_t;
-
-typedef struct ms_ocall_stat_t {
-	int ms_retval;
-	const char* ms_path;
-	struct stat* ms_buf;
-	size_t ms_size;
-} ms_ocall_stat_t;
-
-typedef struct ms_ocall_fstat_t {
-	int ms_retval;
-	int ms_fd;
-	struct stat* ms_buf;
-	size_t ms_size;
-} ms_ocall_fstat_t;
-
-typedef struct ms_ocall_ftruncate_t {
-	int ms_retval;
-	int ms_fd;
-	off_t ms_length;
-} ms_ocall_ftruncate_t;
-
-typedef struct ms_ocall_getcwd_t {
-	char* ms_retval;
-	int ocall_errno;
-	char* ms_buf;
-	size_t ms_size;
-} ms_ocall_getcwd_t;
-
-typedef struct ms_ocall_getpid_t {
-	int ms_retval;
-} ms_ocall_getpid_t;
-
-typedef struct ms_ocall_getuid_t {
-	int ms_retval;
-} ms_ocall_getuid_t;
-
-typedef struct ms_ocall_getenv_t {
-	char* ms_retval;
-	const char* ms_name;
-} ms_ocall_getenv_t;
-
-typedef struct ms_ocall_open64_t {
-	int ms_retval;
-	const char* ms_filename;
-	int ms_flags;
-	mode_t ms_mode;
-} ms_ocall_open64_t;
-
-typedef struct ms_ocall_close_t {
-	int ms_retval;
-	int ms_fd;
-} ms_ocall_close_t;
-
-typedef struct ms_ocall_lseek64_t {
-	off_t ms_retval;
-	int ocall_errno;
-	int ms_fd;
-	off_t ms_offset;
-	int ms_whence;
-} ms_ocall_lseek64_t;
-
-typedef struct ms_ocall_read_t {
-	int ms_retval;
-	int ocall_errno;
-	int ms_fd;
-	void* ms_buf;
-	size_t ms_count;
-} ms_ocall_read_t;
-
-typedef struct ms_ocall_write_t {
-	int ms_retval;
-	int ocall_errno;
-	int ms_fd;
-	const void* ms_buf;
-	size_t ms_count;
-} ms_ocall_write_t;
-
-typedef struct ms_ocall_fsync_t {
-	int ms_retval;
-	int ms_fd;
-} ms_ocall_fsync_t;
-
-typedef struct ms_ocall_fcntl_t {
-	int ms_retval;
-	int ocall_errno;
-	int ms_fd;
-	int ms_cmd;
-	void* ms_arg;
-	size_t ms_size;
-} ms_ocall_fcntl_t;
-
-typedef struct ms_ocall_fcntl64_t {
-	int ms_retval;
-	int ocall_errno;
-	int ms_fd;
-	int ms_cmd;
-	void* ms_arg;
-	size_t ms_size;
-} ms_ocall_fcntl64_t;
-
-typedef struct ms_ocall_unlink_t {
-	int ms_retval;
-	const char* ms_pathname;
-} ms_ocall_unlink_t;
 
 typedef struct ms_ocall_copy_file_t {
 	const char* ms_src_path;
@@ -224,7 +133,7 @@ static sgx_status_t SGX_CDECL sgx_generate_matrix_card_values(void* pms)
 		}
 
 	}
-	_in_retval = generate_matrix_card_values(_in_array, _tmp_array_size);
+	_in_retval = generate_matrix_card_values(__in_ms.ms_client_id, _in_array, _tmp_array_size);
 	if (memcpy_verw_s(&ms->ms_retval, sizeof(ms->ms_retval), &_in_retval, sizeof(_in_retval))) {
 		status = SGX_ERROR_UNEXPECTED;
 		goto err;
@@ -333,24 +242,10 @@ SGX_EXTERNC const struct {
 
 SGX_EXTERNC const struct {
 	size_t nr_ocall;
-	uint8_t entry_table[23][2];
+	uint8_t entry_table[9][2];
 } g_dyn_entry_table = {
-	23,
+	9,
 	{
-		{0, 0, },
-		{0, 0, },
-		{0, 0, },
-		{0, 0, },
-		{0, 0, },
-		{0, 0, },
-		{0, 0, },
-		{0, 0, },
-		{0, 0, },
-		{0, 0, },
-		{0, 0, },
-		{0, 0, },
-		{0, 0, },
-		{0, 0, },
 		{0, 0, },
 		{0, 0, },
 		{0, 0, },
@@ -363,6 +258,212 @@ SGX_EXTERNC const struct {
 	}
 };
 
+
+sgx_status_t SGX_CDECL ocall_write_sealed_data(int* retval, int client_id, uint8_t* sealed_data, size_t sealed_data_size)
+{
+	sgx_status_t status = SGX_SUCCESS;
+	size_t _len_sealed_data = sealed_data_size;
+
+	ms_ocall_write_sealed_data_t* ms = NULL;
+	size_t ocalloc_size = sizeof(ms_ocall_write_sealed_data_t);
+	void *__tmp = NULL;
+
+
+	CHECK_ENCLAVE_POINTER(sealed_data, _len_sealed_data);
+
+	if (ADD_ASSIGN_OVERFLOW(ocalloc_size, (sealed_data != NULL) ? _len_sealed_data : 0))
+		return SGX_ERROR_INVALID_PARAMETER;
+
+	__tmp = sgx_ocalloc(ocalloc_size);
+	if (__tmp == NULL) {
+		sgx_ocfree();
+		return SGX_ERROR_UNEXPECTED;
+	}
+	ms = (ms_ocall_write_sealed_data_t*)__tmp;
+	__tmp = (void *)((size_t)__tmp + sizeof(ms_ocall_write_sealed_data_t));
+	ocalloc_size -= sizeof(ms_ocall_write_sealed_data_t);
+
+	if (memcpy_verw_s(&ms->ms_client_id, sizeof(ms->ms_client_id), &client_id, sizeof(client_id))) {
+		sgx_ocfree();
+		return SGX_ERROR_UNEXPECTED;
+	}
+
+	if (sealed_data != NULL) {
+		if (memcpy_verw_s(&ms->ms_sealed_data, sizeof(uint8_t*), &__tmp, sizeof(uint8_t*))) {
+			sgx_ocfree();
+			return SGX_ERROR_UNEXPECTED;
+		}
+		if (_len_sealed_data % sizeof(*sealed_data) != 0) {
+			sgx_ocfree();
+			return SGX_ERROR_INVALID_PARAMETER;
+		}
+		if (memcpy_verw_s(__tmp, ocalloc_size, sealed_data, _len_sealed_data)) {
+			sgx_ocfree();
+			return SGX_ERROR_UNEXPECTED;
+		}
+		__tmp = (void *)((size_t)__tmp + _len_sealed_data);
+		ocalloc_size -= _len_sealed_data;
+	} else {
+		ms->ms_sealed_data = NULL;
+	}
+
+	if (memcpy_verw_s(&ms->ms_sealed_data_size, sizeof(ms->ms_sealed_data_size), &sealed_data_size, sizeof(sealed_data_size))) {
+		sgx_ocfree();
+		return SGX_ERROR_UNEXPECTED;
+	}
+
+	status = sgx_ocall(0, ms);
+
+	if (status == SGX_SUCCESS) {
+		if (retval) {
+			if (memcpy_s((void*)retval, sizeof(*retval), &ms->ms_retval, sizeof(ms->ms_retval))) {
+				sgx_ocfree();
+				return SGX_ERROR_UNEXPECTED;
+			}
+		}
+	}
+	sgx_ocfree();
+	return status;
+}
+
+sgx_status_t SGX_CDECL ocall_get_sealed_data_size(int* retval, int client_id, size_t* file_size)
+{
+	sgx_status_t status = SGX_SUCCESS;
+	size_t _len_file_size = sizeof(size_t);
+
+	ms_ocall_get_sealed_data_size_t* ms = NULL;
+	size_t ocalloc_size = sizeof(ms_ocall_get_sealed_data_size_t);
+	void *__tmp = NULL;
+
+	void *__tmp_file_size = NULL;
+
+	CHECK_ENCLAVE_POINTER(file_size, _len_file_size);
+
+	if (ADD_ASSIGN_OVERFLOW(ocalloc_size, (file_size != NULL) ? _len_file_size : 0))
+		return SGX_ERROR_INVALID_PARAMETER;
+
+	__tmp = sgx_ocalloc(ocalloc_size);
+	if (__tmp == NULL) {
+		sgx_ocfree();
+		return SGX_ERROR_UNEXPECTED;
+	}
+	ms = (ms_ocall_get_sealed_data_size_t*)__tmp;
+	__tmp = (void *)((size_t)__tmp + sizeof(ms_ocall_get_sealed_data_size_t));
+	ocalloc_size -= sizeof(ms_ocall_get_sealed_data_size_t);
+
+	if (memcpy_verw_s(&ms->ms_client_id, sizeof(ms->ms_client_id), &client_id, sizeof(client_id))) {
+		sgx_ocfree();
+		return SGX_ERROR_UNEXPECTED;
+	}
+
+	if (file_size != NULL) {
+		if (memcpy_verw_s(&ms->ms_file_size, sizeof(size_t*), &__tmp, sizeof(size_t*))) {
+			sgx_ocfree();
+			return SGX_ERROR_UNEXPECTED;
+		}
+		__tmp_file_size = __tmp;
+		if (_len_file_size % sizeof(*file_size) != 0) {
+			sgx_ocfree();
+			return SGX_ERROR_INVALID_PARAMETER;
+		}
+		memset_verw(__tmp_file_size, 0, _len_file_size);
+		__tmp = (void *)((size_t)__tmp + _len_file_size);
+		ocalloc_size -= _len_file_size;
+	} else {
+		ms->ms_file_size = NULL;
+	}
+
+	status = sgx_ocall(1, ms);
+
+	if (status == SGX_SUCCESS) {
+		if (retval) {
+			if (memcpy_s((void*)retval, sizeof(*retval), &ms->ms_retval, sizeof(ms->ms_retval))) {
+				sgx_ocfree();
+				return SGX_ERROR_UNEXPECTED;
+			}
+		}
+		if (file_size) {
+			if (memcpy_s((void*)file_size, _len_file_size, __tmp_file_size, _len_file_size)) {
+				sgx_ocfree();
+				return SGX_ERROR_UNEXPECTED;
+			}
+		}
+	}
+	sgx_ocfree();
+	return status;
+}
+
+sgx_status_t SGX_CDECL ocall_read_sealed_data(int* retval, int client_id, uint8_t* data, size_t data_size)
+{
+	sgx_status_t status = SGX_SUCCESS;
+	size_t _len_data = data_size;
+
+	ms_ocall_read_sealed_data_t* ms = NULL;
+	size_t ocalloc_size = sizeof(ms_ocall_read_sealed_data_t);
+	void *__tmp = NULL;
+
+	void *__tmp_data = NULL;
+
+	CHECK_ENCLAVE_POINTER(data, _len_data);
+
+	if (ADD_ASSIGN_OVERFLOW(ocalloc_size, (data != NULL) ? _len_data : 0))
+		return SGX_ERROR_INVALID_PARAMETER;
+
+	__tmp = sgx_ocalloc(ocalloc_size);
+	if (__tmp == NULL) {
+		sgx_ocfree();
+		return SGX_ERROR_UNEXPECTED;
+	}
+	ms = (ms_ocall_read_sealed_data_t*)__tmp;
+	__tmp = (void *)((size_t)__tmp + sizeof(ms_ocall_read_sealed_data_t));
+	ocalloc_size -= sizeof(ms_ocall_read_sealed_data_t);
+
+	if (memcpy_verw_s(&ms->ms_client_id, sizeof(ms->ms_client_id), &client_id, sizeof(client_id))) {
+		sgx_ocfree();
+		return SGX_ERROR_UNEXPECTED;
+	}
+
+	if (data != NULL) {
+		if (memcpy_verw_s(&ms->ms_data, sizeof(uint8_t*), &__tmp, sizeof(uint8_t*))) {
+			sgx_ocfree();
+			return SGX_ERROR_UNEXPECTED;
+		}
+		__tmp_data = __tmp;
+		if (_len_data % sizeof(*data) != 0) {
+			sgx_ocfree();
+			return SGX_ERROR_INVALID_PARAMETER;
+		}
+		memset_verw(__tmp_data, 0, _len_data);
+		__tmp = (void *)((size_t)__tmp + _len_data);
+		ocalloc_size -= _len_data;
+	} else {
+		ms->ms_data = NULL;
+	}
+
+	if (memcpy_verw_s(&ms->ms_data_size, sizeof(ms->ms_data_size), &data_size, sizeof(data_size))) {
+		sgx_ocfree();
+		return SGX_ERROR_UNEXPECTED;
+	}
+
+	status = sgx_ocall(2, ms);
+
+	if (status == SGX_SUCCESS) {
+		if (retval) {
+			if (memcpy_s((void*)retval, sizeof(*retval), &ms->ms_retval, sizeof(ms->ms_retval))) {
+				sgx_ocfree();
+				return SGX_ERROR_UNEXPECTED;
+			}
+		}
+		if (data) {
+			if (memcpy_s((void*)data, _len_data, __tmp_data, _len_data)) {
+				sgx_ocfree();
+				return SGX_ERROR_UNEXPECTED;
+			}
+		}
+	}
+	sgx_ocfree();
+	return status;
+}
 
 sgx_status_t SGX_CDECL ocall_print(const char* str)
 {
@@ -407,7 +508,7 @@ sgx_status_t SGX_CDECL ocall_print(const char* str)
 		ms->ms_str = NULL;
 	}
 
-	status = sgx_ocall(0, ms);
+	status = sgx_ocall(3, ms);
 
 	if (status == SGX_SUCCESS) {
 	}
@@ -458,7 +559,7 @@ sgx_status_t SGX_CDECL ocall_println_string(const char* str)
 		ms->ms_str = NULL;
 	}
 
-	status = sgx_ocall(1, ms);
+	status = sgx_ocall(4, ms);
 
 	if (status == SGX_SUCCESS) {
 	}
@@ -509,7 +610,7 @@ sgx_status_t SGX_CDECL ocall_print_string(const char* str)
 		ms->ms_str = NULL;
 	}
 
-	status = sgx_ocall(2, ms);
+	status = sgx_ocall(5, ms);
 
 	if (status == SGX_SUCCESS) {
 	}
@@ -560,7 +661,7 @@ sgx_status_t SGX_CDECL ocall_print_error(const char* str)
 		ms->ms_str = NULL;
 	}
 
-	status = sgx_ocall(3, ms);
+	status = sgx_ocall(6, ms);
 
 	if (status == SGX_SUCCESS) {
 	}
@@ -616,1028 +717,9 @@ sgx_status_t SGX_CDECL ocall_text_print(uint8_t* data, uint32_t data_size)
 		return SGX_ERROR_UNEXPECTED;
 	}
 
-	status = sgx_ocall(4, ms);
-
-	if (status == SGX_SUCCESS) {
-	}
-	sgx_ocfree();
-	return status;
-}
-
-sgx_status_t SGX_CDECL ocall_lstat(int* retval, const char* path, struct stat* buf, size_t size)
-{
-	sgx_status_t status = SGX_SUCCESS;
-	size_t _len_path = path ? strlen(path) + 1 : 0;
-	size_t _len_buf = size;
-
-	ms_ocall_lstat_t* ms = NULL;
-	size_t ocalloc_size = sizeof(ms_ocall_lstat_t);
-	void *__tmp = NULL;
-
-	void *__tmp_buf = NULL;
-
-	CHECK_ENCLAVE_POINTER(path, _len_path);
-	CHECK_ENCLAVE_POINTER(buf, _len_buf);
-
-	if (ADD_ASSIGN_OVERFLOW(ocalloc_size, (path != NULL) ? _len_path : 0))
-		return SGX_ERROR_INVALID_PARAMETER;
-	if (ADD_ASSIGN_OVERFLOW(ocalloc_size, (buf != NULL) ? _len_buf : 0))
-		return SGX_ERROR_INVALID_PARAMETER;
-
-	__tmp = sgx_ocalloc(ocalloc_size);
-	if (__tmp == NULL) {
-		sgx_ocfree();
-		return SGX_ERROR_UNEXPECTED;
-	}
-	ms = (ms_ocall_lstat_t*)__tmp;
-	__tmp = (void *)((size_t)__tmp + sizeof(ms_ocall_lstat_t));
-	ocalloc_size -= sizeof(ms_ocall_lstat_t);
-
-	if (path != NULL) {
-		if (memcpy_verw_s(&ms->ms_path, sizeof(const char*), &__tmp, sizeof(const char*))) {
-			sgx_ocfree();
-			return SGX_ERROR_UNEXPECTED;
-		}
-		if (_len_path % sizeof(*path) != 0) {
-			sgx_ocfree();
-			return SGX_ERROR_INVALID_PARAMETER;
-		}
-		if (memcpy_verw_s(__tmp, ocalloc_size, path, _len_path)) {
-			sgx_ocfree();
-			return SGX_ERROR_UNEXPECTED;
-		}
-		__tmp = (void *)((size_t)__tmp + _len_path);
-		ocalloc_size -= _len_path;
-	} else {
-		ms->ms_path = NULL;
-	}
-
-	if (buf != NULL) {
-		if (memcpy_verw_s(&ms->ms_buf, sizeof(struct stat*), &__tmp, sizeof(struct stat*))) {
-			sgx_ocfree();
-			return SGX_ERROR_UNEXPECTED;
-		}
-		__tmp_buf = __tmp;
-		if (memcpy_verw_s(__tmp, ocalloc_size, buf, _len_buf)) {
-			sgx_ocfree();
-			return SGX_ERROR_UNEXPECTED;
-		}
-		__tmp = (void *)((size_t)__tmp + _len_buf);
-		ocalloc_size -= _len_buf;
-	} else {
-		ms->ms_buf = NULL;
-	}
-
-	if (memcpy_verw_s(&ms->ms_size, sizeof(ms->ms_size), &size, sizeof(size))) {
-		sgx_ocfree();
-		return SGX_ERROR_UNEXPECTED;
-	}
-
-	status = sgx_ocall(5, ms);
-
-	if (status == SGX_SUCCESS) {
-		if (retval) {
-			if (memcpy_s((void*)retval, sizeof(*retval), &ms->ms_retval, sizeof(ms->ms_retval))) {
-				sgx_ocfree();
-				return SGX_ERROR_UNEXPECTED;
-			}
-		}
-		if (buf) {
-			if (memcpy_s((void*)buf, _len_buf, __tmp_buf, _len_buf)) {
-				sgx_ocfree();
-				return SGX_ERROR_UNEXPECTED;
-			}
-		}
-		if (memcpy_s((void*)&errno, sizeof(errno), &ms->ocall_errno, sizeof(ms->ocall_errno))) {
-			sgx_ocfree();
-			return SGX_ERROR_UNEXPECTED;
-		}
-	}
-	sgx_ocfree();
-	return status;
-}
-
-sgx_status_t SGX_CDECL ocall_stat(int* retval, const char* path, struct stat* buf, size_t size)
-{
-	sgx_status_t status = SGX_SUCCESS;
-	size_t _len_path = path ? strlen(path) + 1 : 0;
-	size_t _len_buf = size;
-
-	ms_ocall_stat_t* ms = NULL;
-	size_t ocalloc_size = sizeof(ms_ocall_stat_t);
-	void *__tmp = NULL;
-
-	void *__tmp_buf = NULL;
-
-	CHECK_ENCLAVE_POINTER(path, _len_path);
-	CHECK_ENCLAVE_POINTER(buf, _len_buf);
-
-	if (ADD_ASSIGN_OVERFLOW(ocalloc_size, (path != NULL) ? _len_path : 0))
-		return SGX_ERROR_INVALID_PARAMETER;
-	if (ADD_ASSIGN_OVERFLOW(ocalloc_size, (buf != NULL) ? _len_buf : 0))
-		return SGX_ERROR_INVALID_PARAMETER;
-
-	__tmp = sgx_ocalloc(ocalloc_size);
-	if (__tmp == NULL) {
-		sgx_ocfree();
-		return SGX_ERROR_UNEXPECTED;
-	}
-	ms = (ms_ocall_stat_t*)__tmp;
-	__tmp = (void *)((size_t)__tmp + sizeof(ms_ocall_stat_t));
-	ocalloc_size -= sizeof(ms_ocall_stat_t);
-
-	if (path != NULL) {
-		if (memcpy_verw_s(&ms->ms_path, sizeof(const char*), &__tmp, sizeof(const char*))) {
-			sgx_ocfree();
-			return SGX_ERROR_UNEXPECTED;
-		}
-		if (_len_path % sizeof(*path) != 0) {
-			sgx_ocfree();
-			return SGX_ERROR_INVALID_PARAMETER;
-		}
-		if (memcpy_verw_s(__tmp, ocalloc_size, path, _len_path)) {
-			sgx_ocfree();
-			return SGX_ERROR_UNEXPECTED;
-		}
-		__tmp = (void *)((size_t)__tmp + _len_path);
-		ocalloc_size -= _len_path;
-	} else {
-		ms->ms_path = NULL;
-	}
-
-	if (buf != NULL) {
-		if (memcpy_verw_s(&ms->ms_buf, sizeof(struct stat*), &__tmp, sizeof(struct stat*))) {
-			sgx_ocfree();
-			return SGX_ERROR_UNEXPECTED;
-		}
-		__tmp_buf = __tmp;
-		if (memcpy_verw_s(__tmp, ocalloc_size, buf, _len_buf)) {
-			sgx_ocfree();
-			return SGX_ERROR_UNEXPECTED;
-		}
-		__tmp = (void *)((size_t)__tmp + _len_buf);
-		ocalloc_size -= _len_buf;
-	} else {
-		ms->ms_buf = NULL;
-	}
-
-	if (memcpy_verw_s(&ms->ms_size, sizeof(ms->ms_size), &size, sizeof(size))) {
-		sgx_ocfree();
-		return SGX_ERROR_UNEXPECTED;
-	}
-
-	status = sgx_ocall(6, ms);
-
-	if (status == SGX_SUCCESS) {
-		if (retval) {
-			if (memcpy_s((void*)retval, sizeof(*retval), &ms->ms_retval, sizeof(ms->ms_retval))) {
-				sgx_ocfree();
-				return SGX_ERROR_UNEXPECTED;
-			}
-		}
-		if (buf) {
-			if (memcpy_s((void*)buf, _len_buf, __tmp_buf, _len_buf)) {
-				sgx_ocfree();
-				return SGX_ERROR_UNEXPECTED;
-			}
-		}
-	}
-	sgx_ocfree();
-	return status;
-}
-
-sgx_status_t SGX_CDECL ocall_fstat(int* retval, int fd, struct stat* buf, size_t size)
-{
-	sgx_status_t status = SGX_SUCCESS;
-	size_t _len_buf = size;
-
-	ms_ocall_fstat_t* ms = NULL;
-	size_t ocalloc_size = sizeof(ms_ocall_fstat_t);
-	void *__tmp = NULL;
-
-	void *__tmp_buf = NULL;
-
-	CHECK_ENCLAVE_POINTER(buf, _len_buf);
-
-	if (ADD_ASSIGN_OVERFLOW(ocalloc_size, (buf != NULL) ? _len_buf : 0))
-		return SGX_ERROR_INVALID_PARAMETER;
-
-	__tmp = sgx_ocalloc(ocalloc_size);
-	if (__tmp == NULL) {
-		sgx_ocfree();
-		return SGX_ERROR_UNEXPECTED;
-	}
-	ms = (ms_ocall_fstat_t*)__tmp;
-	__tmp = (void *)((size_t)__tmp + sizeof(ms_ocall_fstat_t));
-	ocalloc_size -= sizeof(ms_ocall_fstat_t);
-
-	if (memcpy_verw_s(&ms->ms_fd, sizeof(ms->ms_fd), &fd, sizeof(fd))) {
-		sgx_ocfree();
-		return SGX_ERROR_UNEXPECTED;
-	}
-
-	if (buf != NULL) {
-		if (memcpy_verw_s(&ms->ms_buf, sizeof(struct stat*), &__tmp, sizeof(struct stat*))) {
-			sgx_ocfree();
-			return SGX_ERROR_UNEXPECTED;
-		}
-		__tmp_buf = __tmp;
-		if (memcpy_verw_s(__tmp, ocalloc_size, buf, _len_buf)) {
-			sgx_ocfree();
-			return SGX_ERROR_UNEXPECTED;
-		}
-		__tmp = (void *)((size_t)__tmp + _len_buf);
-		ocalloc_size -= _len_buf;
-	} else {
-		ms->ms_buf = NULL;
-	}
-
-	if (memcpy_verw_s(&ms->ms_size, sizeof(ms->ms_size), &size, sizeof(size))) {
-		sgx_ocfree();
-		return SGX_ERROR_UNEXPECTED;
-	}
-
 	status = sgx_ocall(7, ms);
 
 	if (status == SGX_SUCCESS) {
-		if (retval) {
-			if (memcpy_s((void*)retval, sizeof(*retval), &ms->ms_retval, sizeof(ms->ms_retval))) {
-				sgx_ocfree();
-				return SGX_ERROR_UNEXPECTED;
-			}
-		}
-		if (buf) {
-			if (memcpy_s((void*)buf, _len_buf, __tmp_buf, _len_buf)) {
-				sgx_ocfree();
-				return SGX_ERROR_UNEXPECTED;
-			}
-		}
-	}
-	sgx_ocfree();
-	return status;
-}
-
-sgx_status_t SGX_CDECL ocall_ftruncate(int* retval, int fd, off_t length)
-{
-	sgx_status_t status = SGX_SUCCESS;
-
-	ms_ocall_ftruncate_t* ms = NULL;
-	size_t ocalloc_size = sizeof(ms_ocall_ftruncate_t);
-	void *__tmp = NULL;
-
-
-	__tmp = sgx_ocalloc(ocalloc_size);
-	if (__tmp == NULL) {
-		sgx_ocfree();
-		return SGX_ERROR_UNEXPECTED;
-	}
-	ms = (ms_ocall_ftruncate_t*)__tmp;
-	__tmp = (void *)((size_t)__tmp + sizeof(ms_ocall_ftruncate_t));
-	ocalloc_size -= sizeof(ms_ocall_ftruncate_t);
-
-	if (memcpy_verw_s(&ms->ms_fd, sizeof(ms->ms_fd), &fd, sizeof(fd))) {
-		sgx_ocfree();
-		return SGX_ERROR_UNEXPECTED;
-	}
-
-	if (memcpy_verw_s(&ms->ms_length, sizeof(ms->ms_length), &length, sizeof(length))) {
-		sgx_ocfree();
-		return SGX_ERROR_UNEXPECTED;
-	}
-
-	status = sgx_ocall(8, ms);
-
-	if (status == SGX_SUCCESS) {
-		if (retval) {
-			if (memcpy_s((void*)retval, sizeof(*retval), &ms->ms_retval, sizeof(ms->ms_retval))) {
-				sgx_ocfree();
-				return SGX_ERROR_UNEXPECTED;
-			}
-		}
-	}
-	sgx_ocfree();
-	return status;
-}
-
-sgx_status_t SGX_CDECL ocall_getcwd(char** retval, char* buf, size_t size)
-{
-	sgx_status_t status = SGX_SUCCESS;
-	size_t _len_buf = size;
-
-	ms_ocall_getcwd_t* ms = NULL;
-	size_t ocalloc_size = sizeof(ms_ocall_getcwd_t);
-	void *__tmp = NULL;
-
-	void *__tmp_buf = NULL;
-
-	CHECK_ENCLAVE_POINTER(buf, _len_buf);
-
-	if (ADD_ASSIGN_OVERFLOW(ocalloc_size, (buf != NULL) ? _len_buf : 0))
-		return SGX_ERROR_INVALID_PARAMETER;
-
-	__tmp = sgx_ocalloc(ocalloc_size);
-	if (__tmp == NULL) {
-		sgx_ocfree();
-		return SGX_ERROR_UNEXPECTED;
-	}
-	ms = (ms_ocall_getcwd_t*)__tmp;
-	__tmp = (void *)((size_t)__tmp + sizeof(ms_ocall_getcwd_t));
-	ocalloc_size -= sizeof(ms_ocall_getcwd_t);
-
-	if (buf != NULL) {
-		if (memcpy_verw_s(&ms->ms_buf, sizeof(char*), &__tmp, sizeof(char*))) {
-			sgx_ocfree();
-			return SGX_ERROR_UNEXPECTED;
-		}
-		__tmp_buf = __tmp;
-		if (_len_buf % sizeof(*buf) != 0) {
-			sgx_ocfree();
-			return SGX_ERROR_INVALID_PARAMETER;
-		}
-		memset_verw(__tmp_buf, 0, _len_buf);
-		__tmp = (void *)((size_t)__tmp + _len_buf);
-		ocalloc_size -= _len_buf;
-	} else {
-		ms->ms_buf = NULL;
-	}
-
-	if (memcpy_verw_s(&ms->ms_size, sizeof(ms->ms_size), &size, sizeof(size))) {
-		sgx_ocfree();
-		return SGX_ERROR_UNEXPECTED;
-	}
-
-	status = sgx_ocall(9, ms);
-
-	if (status == SGX_SUCCESS) {
-		if (retval) {
-			if (memcpy_s((void*)retval, sizeof(*retval), &ms->ms_retval, sizeof(ms->ms_retval))) {
-				sgx_ocfree();
-				return SGX_ERROR_UNEXPECTED;
-			}
-		}
-		if (buf) {
-			if (memcpy_s((void*)buf, _len_buf, __tmp_buf, _len_buf)) {
-				sgx_ocfree();
-				return SGX_ERROR_UNEXPECTED;
-			}
-		}
-		if (memcpy_s((void*)&errno, sizeof(errno), &ms->ocall_errno, sizeof(ms->ocall_errno))) {
-			sgx_ocfree();
-			return SGX_ERROR_UNEXPECTED;
-		}
-	}
-	sgx_ocfree();
-	return status;
-}
-
-sgx_status_t SGX_CDECL ocall_getpid(int* retval)
-{
-	sgx_status_t status = SGX_SUCCESS;
-
-	ms_ocall_getpid_t* ms = NULL;
-	size_t ocalloc_size = sizeof(ms_ocall_getpid_t);
-	void *__tmp = NULL;
-
-
-	__tmp = sgx_ocalloc(ocalloc_size);
-	if (__tmp == NULL) {
-		sgx_ocfree();
-		return SGX_ERROR_UNEXPECTED;
-	}
-	ms = (ms_ocall_getpid_t*)__tmp;
-	__tmp = (void *)((size_t)__tmp + sizeof(ms_ocall_getpid_t));
-	ocalloc_size -= sizeof(ms_ocall_getpid_t);
-
-	status = sgx_ocall(10, ms);
-
-	if (status == SGX_SUCCESS) {
-		if (retval) {
-			if (memcpy_s((void*)retval, sizeof(*retval), &ms->ms_retval, sizeof(ms->ms_retval))) {
-				sgx_ocfree();
-				return SGX_ERROR_UNEXPECTED;
-			}
-		}
-	}
-	sgx_ocfree();
-	return status;
-}
-
-sgx_status_t SGX_CDECL ocall_getuid(int* retval)
-{
-	sgx_status_t status = SGX_SUCCESS;
-
-	ms_ocall_getuid_t* ms = NULL;
-	size_t ocalloc_size = sizeof(ms_ocall_getuid_t);
-	void *__tmp = NULL;
-
-
-	__tmp = sgx_ocalloc(ocalloc_size);
-	if (__tmp == NULL) {
-		sgx_ocfree();
-		return SGX_ERROR_UNEXPECTED;
-	}
-	ms = (ms_ocall_getuid_t*)__tmp;
-	__tmp = (void *)((size_t)__tmp + sizeof(ms_ocall_getuid_t));
-	ocalloc_size -= sizeof(ms_ocall_getuid_t);
-
-	status = sgx_ocall(11, ms);
-
-	if (status == SGX_SUCCESS) {
-		if (retval) {
-			if (memcpy_s((void*)retval, sizeof(*retval), &ms->ms_retval, sizeof(ms->ms_retval))) {
-				sgx_ocfree();
-				return SGX_ERROR_UNEXPECTED;
-			}
-		}
-	}
-	sgx_ocfree();
-	return status;
-}
-
-sgx_status_t SGX_CDECL ocall_getenv(char** retval, const char* name)
-{
-	sgx_status_t status = SGX_SUCCESS;
-	size_t _len_name = name ? strlen(name) + 1 : 0;
-
-	ms_ocall_getenv_t* ms = NULL;
-	size_t ocalloc_size = sizeof(ms_ocall_getenv_t);
-	void *__tmp = NULL;
-
-
-	CHECK_ENCLAVE_POINTER(name, _len_name);
-
-	if (ADD_ASSIGN_OVERFLOW(ocalloc_size, (name != NULL) ? _len_name : 0))
-		return SGX_ERROR_INVALID_PARAMETER;
-
-	__tmp = sgx_ocalloc(ocalloc_size);
-	if (__tmp == NULL) {
-		sgx_ocfree();
-		return SGX_ERROR_UNEXPECTED;
-	}
-	ms = (ms_ocall_getenv_t*)__tmp;
-	__tmp = (void *)((size_t)__tmp + sizeof(ms_ocall_getenv_t));
-	ocalloc_size -= sizeof(ms_ocall_getenv_t);
-
-	if (name != NULL) {
-		if (memcpy_verw_s(&ms->ms_name, sizeof(const char*), &__tmp, sizeof(const char*))) {
-			sgx_ocfree();
-			return SGX_ERROR_UNEXPECTED;
-		}
-		if (_len_name % sizeof(*name) != 0) {
-			sgx_ocfree();
-			return SGX_ERROR_INVALID_PARAMETER;
-		}
-		if (memcpy_verw_s(__tmp, ocalloc_size, name, _len_name)) {
-			sgx_ocfree();
-			return SGX_ERROR_UNEXPECTED;
-		}
-		__tmp = (void *)((size_t)__tmp + _len_name);
-		ocalloc_size -= _len_name;
-	} else {
-		ms->ms_name = NULL;
-	}
-
-	status = sgx_ocall(12, ms);
-
-	if (status == SGX_SUCCESS) {
-		if (retval) {
-			if (memcpy_s((void*)retval, sizeof(*retval), &ms->ms_retval, sizeof(ms->ms_retval))) {
-				sgx_ocfree();
-				return SGX_ERROR_UNEXPECTED;
-			}
-		}
-	}
-	sgx_ocfree();
-	return status;
-}
-
-sgx_status_t SGX_CDECL ocall_open64(int* retval, const char* filename, int flags, mode_t mode)
-{
-	sgx_status_t status = SGX_SUCCESS;
-	size_t _len_filename = filename ? strlen(filename) + 1 : 0;
-
-	ms_ocall_open64_t* ms = NULL;
-	size_t ocalloc_size = sizeof(ms_ocall_open64_t);
-	void *__tmp = NULL;
-
-
-	CHECK_ENCLAVE_POINTER(filename, _len_filename);
-
-	if (ADD_ASSIGN_OVERFLOW(ocalloc_size, (filename != NULL) ? _len_filename : 0))
-		return SGX_ERROR_INVALID_PARAMETER;
-
-	__tmp = sgx_ocalloc(ocalloc_size);
-	if (__tmp == NULL) {
-		sgx_ocfree();
-		return SGX_ERROR_UNEXPECTED;
-	}
-	ms = (ms_ocall_open64_t*)__tmp;
-	__tmp = (void *)((size_t)__tmp + sizeof(ms_ocall_open64_t));
-	ocalloc_size -= sizeof(ms_ocall_open64_t);
-
-	if (filename != NULL) {
-		if (memcpy_verw_s(&ms->ms_filename, sizeof(const char*), &__tmp, sizeof(const char*))) {
-			sgx_ocfree();
-			return SGX_ERROR_UNEXPECTED;
-		}
-		if (_len_filename % sizeof(*filename) != 0) {
-			sgx_ocfree();
-			return SGX_ERROR_INVALID_PARAMETER;
-		}
-		if (memcpy_verw_s(__tmp, ocalloc_size, filename, _len_filename)) {
-			sgx_ocfree();
-			return SGX_ERROR_UNEXPECTED;
-		}
-		__tmp = (void *)((size_t)__tmp + _len_filename);
-		ocalloc_size -= _len_filename;
-	} else {
-		ms->ms_filename = NULL;
-	}
-
-	if (memcpy_verw_s(&ms->ms_flags, sizeof(ms->ms_flags), &flags, sizeof(flags))) {
-		sgx_ocfree();
-		return SGX_ERROR_UNEXPECTED;
-	}
-
-	if (memcpy_verw_s(&ms->ms_mode, sizeof(ms->ms_mode), &mode, sizeof(mode))) {
-		sgx_ocfree();
-		return SGX_ERROR_UNEXPECTED;
-	}
-
-	status = sgx_ocall(13, ms);
-
-	if (status == SGX_SUCCESS) {
-		if (retval) {
-			if (memcpy_s((void*)retval, sizeof(*retval), &ms->ms_retval, sizeof(ms->ms_retval))) {
-				sgx_ocfree();
-				return SGX_ERROR_UNEXPECTED;
-			}
-		}
-	}
-	sgx_ocfree();
-	return status;
-}
-
-sgx_status_t SGX_CDECL ocall_close(int* retval, int fd)
-{
-	sgx_status_t status = SGX_SUCCESS;
-
-	ms_ocall_close_t* ms = NULL;
-	size_t ocalloc_size = sizeof(ms_ocall_close_t);
-	void *__tmp = NULL;
-
-
-	__tmp = sgx_ocalloc(ocalloc_size);
-	if (__tmp == NULL) {
-		sgx_ocfree();
-		return SGX_ERROR_UNEXPECTED;
-	}
-	ms = (ms_ocall_close_t*)__tmp;
-	__tmp = (void *)((size_t)__tmp + sizeof(ms_ocall_close_t));
-	ocalloc_size -= sizeof(ms_ocall_close_t);
-
-	if (memcpy_verw_s(&ms->ms_fd, sizeof(ms->ms_fd), &fd, sizeof(fd))) {
-		sgx_ocfree();
-		return SGX_ERROR_UNEXPECTED;
-	}
-
-	status = sgx_ocall(14, ms);
-
-	if (status == SGX_SUCCESS) {
-		if (retval) {
-			if (memcpy_s((void*)retval, sizeof(*retval), &ms->ms_retval, sizeof(ms->ms_retval))) {
-				sgx_ocfree();
-				return SGX_ERROR_UNEXPECTED;
-			}
-		}
-	}
-	sgx_ocfree();
-	return status;
-}
-
-sgx_status_t SGX_CDECL ocall_lseek64(off_t* retval, int fd, off_t offset, int whence)
-{
-	sgx_status_t status = SGX_SUCCESS;
-
-	ms_ocall_lseek64_t* ms = NULL;
-	size_t ocalloc_size = sizeof(ms_ocall_lseek64_t);
-	void *__tmp = NULL;
-
-
-	__tmp = sgx_ocalloc(ocalloc_size);
-	if (__tmp == NULL) {
-		sgx_ocfree();
-		return SGX_ERROR_UNEXPECTED;
-	}
-	ms = (ms_ocall_lseek64_t*)__tmp;
-	__tmp = (void *)((size_t)__tmp + sizeof(ms_ocall_lseek64_t));
-	ocalloc_size -= sizeof(ms_ocall_lseek64_t);
-
-	if (memcpy_verw_s(&ms->ms_fd, sizeof(ms->ms_fd), &fd, sizeof(fd))) {
-		sgx_ocfree();
-		return SGX_ERROR_UNEXPECTED;
-	}
-
-	if (memcpy_verw_s(&ms->ms_offset, sizeof(ms->ms_offset), &offset, sizeof(offset))) {
-		sgx_ocfree();
-		return SGX_ERROR_UNEXPECTED;
-	}
-
-	if (memcpy_verw_s(&ms->ms_whence, sizeof(ms->ms_whence), &whence, sizeof(whence))) {
-		sgx_ocfree();
-		return SGX_ERROR_UNEXPECTED;
-	}
-
-	status = sgx_ocall(15, ms);
-
-	if (status == SGX_SUCCESS) {
-		if (retval) {
-			if (memcpy_s((void*)retval, sizeof(*retval), &ms->ms_retval, sizeof(ms->ms_retval))) {
-				sgx_ocfree();
-				return SGX_ERROR_UNEXPECTED;
-			}
-		}
-		if (memcpy_s((void*)&errno, sizeof(errno), &ms->ocall_errno, sizeof(ms->ocall_errno))) {
-			sgx_ocfree();
-			return SGX_ERROR_UNEXPECTED;
-		}
-	}
-	sgx_ocfree();
-	return status;
-}
-
-sgx_status_t SGX_CDECL ocall_read(int* retval, int fd, void* buf, size_t count)
-{
-	sgx_status_t status = SGX_SUCCESS;
-	size_t _len_buf = count;
-
-	ms_ocall_read_t* ms = NULL;
-	size_t ocalloc_size = sizeof(ms_ocall_read_t);
-	void *__tmp = NULL;
-
-	void *__tmp_buf = NULL;
-
-	CHECK_ENCLAVE_POINTER(buf, _len_buf);
-
-	if (ADD_ASSIGN_OVERFLOW(ocalloc_size, (buf != NULL) ? _len_buf : 0))
-		return SGX_ERROR_INVALID_PARAMETER;
-
-	__tmp = sgx_ocalloc(ocalloc_size);
-	if (__tmp == NULL) {
-		sgx_ocfree();
-		return SGX_ERROR_UNEXPECTED;
-	}
-	ms = (ms_ocall_read_t*)__tmp;
-	__tmp = (void *)((size_t)__tmp + sizeof(ms_ocall_read_t));
-	ocalloc_size -= sizeof(ms_ocall_read_t);
-
-	if (memcpy_verw_s(&ms->ms_fd, sizeof(ms->ms_fd), &fd, sizeof(fd))) {
-		sgx_ocfree();
-		return SGX_ERROR_UNEXPECTED;
-	}
-
-	if (buf != NULL) {
-		if (memcpy_verw_s(&ms->ms_buf, sizeof(void*), &__tmp, sizeof(void*))) {
-			sgx_ocfree();
-			return SGX_ERROR_UNEXPECTED;
-		}
-		__tmp_buf = __tmp;
-		memset_verw(__tmp_buf, 0, _len_buf);
-		__tmp = (void *)((size_t)__tmp + _len_buf);
-		ocalloc_size -= _len_buf;
-	} else {
-		ms->ms_buf = NULL;
-	}
-
-	if (memcpy_verw_s(&ms->ms_count, sizeof(ms->ms_count), &count, sizeof(count))) {
-		sgx_ocfree();
-		return SGX_ERROR_UNEXPECTED;
-	}
-
-	status = sgx_ocall(16, ms);
-
-	if (status == SGX_SUCCESS) {
-		if (retval) {
-			if (memcpy_s((void*)retval, sizeof(*retval), &ms->ms_retval, sizeof(ms->ms_retval))) {
-				sgx_ocfree();
-				return SGX_ERROR_UNEXPECTED;
-			}
-		}
-		if (buf) {
-			if (memcpy_s((void*)buf, _len_buf, __tmp_buf, _len_buf)) {
-				sgx_ocfree();
-				return SGX_ERROR_UNEXPECTED;
-			}
-		}
-		if (memcpy_s((void*)&errno, sizeof(errno), &ms->ocall_errno, sizeof(ms->ocall_errno))) {
-			sgx_ocfree();
-			return SGX_ERROR_UNEXPECTED;
-		}
-	}
-	sgx_ocfree();
-	return status;
-}
-
-sgx_status_t SGX_CDECL ocall_write(int* retval, int fd, const void* buf, size_t count)
-{
-	sgx_status_t status = SGX_SUCCESS;
-	size_t _len_buf = count;
-
-	ms_ocall_write_t* ms = NULL;
-	size_t ocalloc_size = sizeof(ms_ocall_write_t);
-	void *__tmp = NULL;
-
-
-	CHECK_ENCLAVE_POINTER(buf, _len_buf);
-
-	if (ADD_ASSIGN_OVERFLOW(ocalloc_size, (buf != NULL) ? _len_buf : 0))
-		return SGX_ERROR_INVALID_PARAMETER;
-
-	__tmp = sgx_ocalloc(ocalloc_size);
-	if (__tmp == NULL) {
-		sgx_ocfree();
-		return SGX_ERROR_UNEXPECTED;
-	}
-	ms = (ms_ocall_write_t*)__tmp;
-	__tmp = (void *)((size_t)__tmp + sizeof(ms_ocall_write_t));
-	ocalloc_size -= sizeof(ms_ocall_write_t);
-
-	if (memcpy_verw_s(&ms->ms_fd, sizeof(ms->ms_fd), &fd, sizeof(fd))) {
-		sgx_ocfree();
-		return SGX_ERROR_UNEXPECTED;
-	}
-
-	if (buf != NULL) {
-		if (memcpy_verw_s(&ms->ms_buf, sizeof(const void*), &__tmp, sizeof(const void*))) {
-			sgx_ocfree();
-			return SGX_ERROR_UNEXPECTED;
-		}
-		if (memcpy_verw_s(__tmp, ocalloc_size, buf, _len_buf)) {
-			sgx_ocfree();
-			return SGX_ERROR_UNEXPECTED;
-		}
-		__tmp = (void *)((size_t)__tmp + _len_buf);
-		ocalloc_size -= _len_buf;
-	} else {
-		ms->ms_buf = NULL;
-	}
-
-	if (memcpy_verw_s(&ms->ms_count, sizeof(ms->ms_count), &count, sizeof(count))) {
-		sgx_ocfree();
-		return SGX_ERROR_UNEXPECTED;
-	}
-
-	status = sgx_ocall(17, ms);
-
-	if (status == SGX_SUCCESS) {
-		if (retval) {
-			if (memcpy_s((void*)retval, sizeof(*retval), &ms->ms_retval, sizeof(ms->ms_retval))) {
-				sgx_ocfree();
-				return SGX_ERROR_UNEXPECTED;
-			}
-		}
-		if (memcpy_s((void*)&errno, sizeof(errno), &ms->ocall_errno, sizeof(ms->ocall_errno))) {
-			sgx_ocfree();
-			return SGX_ERROR_UNEXPECTED;
-		}
-	}
-	sgx_ocfree();
-	return status;
-}
-
-sgx_status_t SGX_CDECL ocall_fsync(int* retval, int fd)
-{
-	sgx_status_t status = SGX_SUCCESS;
-
-	ms_ocall_fsync_t* ms = NULL;
-	size_t ocalloc_size = sizeof(ms_ocall_fsync_t);
-	void *__tmp = NULL;
-
-
-	__tmp = sgx_ocalloc(ocalloc_size);
-	if (__tmp == NULL) {
-		sgx_ocfree();
-		return SGX_ERROR_UNEXPECTED;
-	}
-	ms = (ms_ocall_fsync_t*)__tmp;
-	__tmp = (void *)((size_t)__tmp + sizeof(ms_ocall_fsync_t));
-	ocalloc_size -= sizeof(ms_ocall_fsync_t);
-
-	if (memcpy_verw_s(&ms->ms_fd, sizeof(ms->ms_fd), &fd, sizeof(fd))) {
-		sgx_ocfree();
-		return SGX_ERROR_UNEXPECTED;
-	}
-
-	status = sgx_ocall(18, ms);
-
-	if (status == SGX_SUCCESS) {
-		if (retval) {
-			if (memcpy_s((void*)retval, sizeof(*retval), &ms->ms_retval, sizeof(ms->ms_retval))) {
-				sgx_ocfree();
-				return SGX_ERROR_UNEXPECTED;
-			}
-		}
-	}
-	sgx_ocfree();
-	return status;
-}
-
-sgx_status_t SGX_CDECL ocall_fcntl(int* retval, int fd, int cmd, void* arg, size_t size)
-{
-	sgx_status_t status = SGX_SUCCESS;
-	size_t _len_arg = size;
-
-	ms_ocall_fcntl_t* ms = NULL;
-	size_t ocalloc_size = sizeof(ms_ocall_fcntl_t);
-	void *__tmp = NULL;
-
-
-	CHECK_ENCLAVE_POINTER(arg, _len_arg);
-
-	if (ADD_ASSIGN_OVERFLOW(ocalloc_size, (arg != NULL) ? _len_arg : 0))
-		return SGX_ERROR_INVALID_PARAMETER;
-
-	__tmp = sgx_ocalloc(ocalloc_size);
-	if (__tmp == NULL) {
-		sgx_ocfree();
-		return SGX_ERROR_UNEXPECTED;
-	}
-	ms = (ms_ocall_fcntl_t*)__tmp;
-	__tmp = (void *)((size_t)__tmp + sizeof(ms_ocall_fcntl_t));
-	ocalloc_size -= sizeof(ms_ocall_fcntl_t);
-
-	if (memcpy_verw_s(&ms->ms_fd, sizeof(ms->ms_fd), &fd, sizeof(fd))) {
-		sgx_ocfree();
-		return SGX_ERROR_UNEXPECTED;
-	}
-
-	if (memcpy_verw_s(&ms->ms_cmd, sizeof(ms->ms_cmd), &cmd, sizeof(cmd))) {
-		sgx_ocfree();
-		return SGX_ERROR_UNEXPECTED;
-	}
-
-	if (arg != NULL) {
-		if (memcpy_verw_s(&ms->ms_arg, sizeof(void*), &__tmp, sizeof(void*))) {
-			sgx_ocfree();
-			return SGX_ERROR_UNEXPECTED;
-		}
-		if (memcpy_verw_s(__tmp, ocalloc_size, arg, _len_arg)) {
-			sgx_ocfree();
-			return SGX_ERROR_UNEXPECTED;
-		}
-		__tmp = (void *)((size_t)__tmp + _len_arg);
-		ocalloc_size -= _len_arg;
-	} else {
-		ms->ms_arg = NULL;
-	}
-
-	if (memcpy_verw_s(&ms->ms_size, sizeof(ms->ms_size), &size, sizeof(size))) {
-		sgx_ocfree();
-		return SGX_ERROR_UNEXPECTED;
-	}
-
-	status = sgx_ocall(19, ms);
-
-	if (status == SGX_SUCCESS) {
-		if (retval) {
-			if (memcpy_s((void*)retval, sizeof(*retval), &ms->ms_retval, sizeof(ms->ms_retval))) {
-				sgx_ocfree();
-				return SGX_ERROR_UNEXPECTED;
-			}
-		}
-		if (memcpy_s((void*)&errno, sizeof(errno), &ms->ocall_errno, sizeof(ms->ocall_errno))) {
-			sgx_ocfree();
-			return SGX_ERROR_UNEXPECTED;
-		}
-	}
-	sgx_ocfree();
-	return status;
-}
-
-sgx_status_t SGX_CDECL ocall_fcntl64(int* retval, int fd, int cmd, void* arg, size_t size)
-{
-	sgx_status_t status = SGX_SUCCESS;
-	size_t _len_arg = size;
-
-	ms_ocall_fcntl64_t* ms = NULL;
-	size_t ocalloc_size = sizeof(ms_ocall_fcntl64_t);
-	void *__tmp = NULL;
-
-
-	CHECK_ENCLAVE_POINTER(arg, _len_arg);
-
-	if (ADD_ASSIGN_OVERFLOW(ocalloc_size, (arg != NULL) ? _len_arg : 0))
-		return SGX_ERROR_INVALID_PARAMETER;
-
-	__tmp = sgx_ocalloc(ocalloc_size);
-	if (__tmp == NULL) {
-		sgx_ocfree();
-		return SGX_ERROR_UNEXPECTED;
-	}
-	ms = (ms_ocall_fcntl64_t*)__tmp;
-	__tmp = (void *)((size_t)__tmp + sizeof(ms_ocall_fcntl64_t));
-	ocalloc_size -= sizeof(ms_ocall_fcntl64_t);
-
-	if (memcpy_verw_s(&ms->ms_fd, sizeof(ms->ms_fd), &fd, sizeof(fd))) {
-		sgx_ocfree();
-		return SGX_ERROR_UNEXPECTED;
-	}
-
-	if (memcpy_verw_s(&ms->ms_cmd, sizeof(ms->ms_cmd), &cmd, sizeof(cmd))) {
-		sgx_ocfree();
-		return SGX_ERROR_UNEXPECTED;
-	}
-
-	if (arg != NULL) {
-		if (memcpy_verw_s(&ms->ms_arg, sizeof(void*), &__tmp, sizeof(void*))) {
-			sgx_ocfree();
-			return SGX_ERROR_UNEXPECTED;
-		}
-		if (memcpy_verw_s(__tmp, ocalloc_size, arg, _len_arg)) {
-			sgx_ocfree();
-			return SGX_ERROR_UNEXPECTED;
-		}
-		__tmp = (void *)((size_t)__tmp + _len_arg);
-		ocalloc_size -= _len_arg;
-	} else {
-		ms->ms_arg = NULL;
-	}
-
-	if (memcpy_verw_s(&ms->ms_size, sizeof(ms->ms_size), &size, sizeof(size))) {
-		sgx_ocfree();
-		return SGX_ERROR_UNEXPECTED;
-	}
-
-	status = sgx_ocall(20, ms);
-
-	if (status == SGX_SUCCESS) {
-		if (retval) {
-			if (memcpy_s((void*)retval, sizeof(*retval), &ms->ms_retval, sizeof(ms->ms_retval))) {
-				sgx_ocfree();
-				return SGX_ERROR_UNEXPECTED;
-			}
-		}
-		if (memcpy_s((void*)&errno, sizeof(errno), &ms->ocall_errno, sizeof(ms->ocall_errno))) {
-			sgx_ocfree();
-			return SGX_ERROR_UNEXPECTED;
-		}
-	}
-	sgx_ocfree();
-	return status;
-}
-
-sgx_status_t SGX_CDECL ocall_unlink(int* retval, const char* pathname)
-{
-	sgx_status_t status = SGX_SUCCESS;
-	size_t _len_pathname = pathname ? strlen(pathname) + 1 : 0;
-
-	ms_ocall_unlink_t* ms = NULL;
-	size_t ocalloc_size = sizeof(ms_ocall_unlink_t);
-	void *__tmp = NULL;
-
-
-	CHECK_ENCLAVE_POINTER(pathname, _len_pathname);
-
-	if (ADD_ASSIGN_OVERFLOW(ocalloc_size, (pathname != NULL) ? _len_pathname : 0))
-		return SGX_ERROR_INVALID_PARAMETER;
-
-	__tmp = sgx_ocalloc(ocalloc_size);
-	if (__tmp == NULL) {
-		sgx_ocfree();
-		return SGX_ERROR_UNEXPECTED;
-	}
-	ms = (ms_ocall_unlink_t*)__tmp;
-	__tmp = (void *)((size_t)__tmp + sizeof(ms_ocall_unlink_t));
-	ocalloc_size -= sizeof(ms_ocall_unlink_t);
-
-	if (pathname != NULL) {
-		if (memcpy_verw_s(&ms->ms_pathname, sizeof(const char*), &__tmp, sizeof(const char*))) {
-			sgx_ocfree();
-			return SGX_ERROR_UNEXPECTED;
-		}
-		if (_len_pathname % sizeof(*pathname) != 0) {
-			sgx_ocfree();
-			return SGX_ERROR_INVALID_PARAMETER;
-		}
-		if (memcpy_verw_s(__tmp, ocalloc_size, pathname, _len_pathname)) {
-			sgx_ocfree();
-			return SGX_ERROR_UNEXPECTED;
-		}
-		__tmp = (void *)((size_t)__tmp + _len_pathname);
-		ocalloc_size -= _len_pathname;
-	} else {
-		ms->ms_pathname = NULL;
-	}
-
-	status = sgx_ocall(21, ms);
-
-	if (status == SGX_SUCCESS) {
-		if (retval) {
-			if (memcpy_s((void*)retval, sizeof(*retval), &ms->ms_retval, sizeof(ms->ms_retval))) {
-				sgx_ocfree();
-				return SGX_ERROR_UNEXPECTED;
-			}
-		}
 	}
 	sgx_ocfree();
 	return status;
@@ -1709,7 +791,7 @@ sgx_status_t SGX_CDECL ocall_copy_file(const char* src_path, const char* dest_pa
 		ms->ms_dest_path = NULL;
 	}
 
-	status = sgx_ocall(22, ms);
+	status = sgx_ocall(8, ms);
 
 	if (status == SGX_SUCCESS) {
 	}

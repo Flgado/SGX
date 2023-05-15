@@ -136,7 +136,9 @@ int main(int argc, char const *argv[]) {
 
         // Generate random array
         uint8_t *array = (uint8_t *)malloc(MATRIX_CARD_SIZE * sizeof(uint8_t));
-        sgx_status_t status = generate_matrix_card_values(global_eid, &ret, array, MATRIX_CARD_SIZE);
+        uint32_t client_id;
+        sscanf(argv[2], "%d", &client_id);
+        sgx_status_t status = generate_matrix_card_values(global_eid, &ret, client_id, array, MATRIX_CARD_SIZE);
         if (status != SGX_SUCCESS) {
             return 1;
         }

@@ -1,92 +1,70 @@
-// This is a real implementation of ocalls
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <stdint.h>
 
-int ocall_lstat(const char *path, struct stat* buf){
-    //printf("Entering %s\n", __func__);
-    return lstat(path, buf);
+int ocall_write_sealed_data(uint32_t client_id, uint8_t *sealed_data, size_t sealed_data_size) {
+    char file_name[20];
+    sprintf(file_name, "cards/%d", client_id);
+
+    FILE *file = fopen(file_name, "wb");
+    if (file == NULL) {
+        printf("Error opening file for writing\n");
+        return -1;
+    }
+
+    size_t num_written = fwrite(sealed_data, 1, sealed_data_size, file);
+    if (num_written != sealed_data_size) {
+        printf("Error writing sealed data to file\n");
+        fclose(file);
+        return -1;
+    }
+
+    fclose(file);
+    return 0;
 }
 
-int ocall_stat(const char *path, struct stat* buf){
-    //printf("Entering %s\n", __func__);
-    return stat(path, buf);
+int ocall_get_sealed_data_size(uint32_t client_id, size_t *file_size) {
+    char file_name[20];
+    sprintf(file_name, "cards/%d", client_id);
+
+    FILE* file = fopen(file_name, "rb");
+    if (file == NULL) {
+        printf("Error opening file\n");
+        return -1;
+    }
+
+    fseek(file, 0, SEEK_END);
+    *file_size = ftell(file);
+    fclose(file);
+
+    return 0;
 }
 
-int ocall_fstat(int fd, struct stat* buf){
-    //printf("Entering %s\n", __func__);
-    return fstat(fd, buf);
-}
+int ocall_read_sealed_data(uint32_t client_id, uint8_t* data, size_t data_size) {
+    char file_name[20];
+    sprintf(file_name, "cards/%d", client_id);
 
-int ocall_ftruncate(int fd, off_t length){
-    //printf("Entering %s\n", __func__);
-    return ftruncate(fd, length);
-}
+    // Open the file for reading
+    FILE* file = fopen(file_name, "rb");
+    if (file == NULL) {
+        printf("Error opening file for reading\n");
+        return -1;
+    }
 
-char* ocall_getcwd(char *buf, size_t size){
-    //printf("Entering %s\n", __func__);
-    return getcwd(buf, size);
-}
+    // Read the data from the file
+    size_t num_read = fread(data, 1, data_size, file);
+    if (num_read != data_size) {
+        printf("Error reading data from file\n");
+        fclose(file);
+        return -1;
+    }
 
-int ocall_getpid(void){
-    //printf("Entering %s\n", __func__);
-    return getpid();
-}
+    // Close the file
+    fclose(file);
 
-int ocall_open64(const char *filename, int flags, mode_t mode){
-    //printf("Entering %s\n", __func__);
-    return open(filename, flags, mode); // redirect it to open() instead of open64()
-}
-
-off_t ocall_lseek64(int fd, off_t offset, int whence){
-    //printf("Entering %s\n", __func__);
-    return lseek(fd, offset, whence); // redirect it to lseek() instead of lseek64()
-}
-
-int ocall_read(int fd, void *buf, size_t count){
-    //printf("Entering %s\n", __func__);
-    return read(fd, buf, count);
-}
-
-int ocall_write(int fd, const void *buf, size_t count){
-    //printf("Entering %s\n", __func__);
-    return write(fd, buf, count);
-}
-
-int ocall_fcntl(int fd, int cmd, void* arg, size_t size){
-    //printf("Entering %s\n", __func__);
-    return fcntl(fd, cmd, arg);
-}
-
-int ocall_fcntl64(int fd, int cmd, void* arg, size_t size){
-    //printf("Entering %s\n", __func__);
-    return fcntl(fd, cmd, arg);
-}
-
-int ocall_close(int fd){
-    //printf("Entering %s\n", __func__);
-    return close(fd);
-}
-
-int ocall_unlink(const char *pathname){
-    //printf("Entering %s\n", __func__);
-    return unlink(pathname);
-}
-
-int ocall_getuid(void){
-    //printf("Entering %s\n", __func__);
-    return getuid();
-}
-
-char* ocall_getenv(const char *name){
-    //printf("Entering %s\n", __func__);
-    return getenv(name);
-}
-
-int ocall_fsync(int fd){
-    //printf("Entering %s\n", __func__);
-    return fsync(fd);
+    return 0;
 }
