@@ -2,6 +2,8 @@
 #include "sgx_trts.h"
 #include "sgx_tseal.h"
 
+#include "serializer.h"
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string>
@@ -11,12 +13,6 @@
 #include <cstdint>
 #include <cstring>
 
-struct Card {
-    int64_t client_id;
-    uint8_t matrix_data[64];
-    std::vector<std::pair<uint64_t, bool>> log;
-};
-
 uint8_t *current_stored_value;
 
 void print_values(char *format, ...) {
@@ -25,71 +21,7 @@ void print_values(char *format, ...) {
     va_start(args, format);
     vsnprintf(buff, sizeof(buff), format, args);
     va_end(args);
-    ocall_println_string(buff);
-}
-
-template <typename T>
-void read_from_vector(const std::vector<uint8_t>& vec, size_t& offset, T& value) {
-    memcpy(&value, vec.data() + offset, sizeof(T));
-    offset += sizeof(T);
-}
-
-Card deserialize(const std::vector<uint8_t>& serialized) {
-    Card card;
-    size_t offset = 0;
-
-    // Read client_id
-    read_from_vector(serialized, offset, card.client_id);
-
-    // Read matrix_data
-    for (auto& data : card.matrix_data) {
-        read_from_vector(serialized, offset, data);
-    }
-
-    // Read log
-    size_t size;
-    read_from_vector(serialized, offset, size);
-    card.log.resize(size);
-    for (auto& entry : card.log) {
-        read_from_vector(serialized, offset, entry.first);
-        read_from_vector(serialized, offset, entry.second);
-    }
-
-    return card;
-}
-
-std::vector<uint8_t> serialize(const Card& card) {
-    size_t total_size = sizeof(card.client_id) + sizeof(card.matrix_data) + sizeof(card.log.size());
-
-    for (const auto& entry : card.log) {
-        total_size += sizeof(entry.first) + sizeof(entry.second);
-    }
-
-    std::vector<uint8_t> serialized_card(total_size);
-
-    // Start copying data
-    size_t offset = 0;
-
-    // Copy client_id
-    memcpy(serialized_card.data() + offset, &card.client_id, sizeof(card.client_id));
-    offset += sizeof(card.client_id);
-
-    // Copy matrix_data
-    memcpy(serialized_card.data() + offset, &card.matrix_data, sizeof(card.matrix_data));
-    offset += sizeof(card.matrix_data);
-
-    // Copy log
-    size_t size = card.log.size();
-    memcpy(serialized_card.data() + offset, &size, sizeof(size));
-    offset += sizeof(size);
-    for (const auto& entry : card.log) {
-        memcpy(serialized_card.data() + offset, &entry.first, sizeof(entry.first));
-        offset += sizeof(entry.first);
-        memcpy(serialized_card.data() + offset, &entry.second, sizeof(entry.second));
-        offset += sizeof(entry.second);
-    }
-
-    return serialized_card;
+    ocall_print(buff);
 }
 
 sgx_status_t unseal(uint8_t* sealed_data_ptr, size_t sealed_data_size, uint8_t** plaintext_ptr, size_t* plaintext_size_ptr, uint8_t** aad_ptr, size_t* aad_size_ptr) {
@@ -190,7 +122,7 @@ int ecall_encrypt_card(Card *card) {
     free(sealed_data);
 }
 
-int generate_matrix_card_values(uint32_t client_id, uint8_t *array, size_t array_size) {
+int ecall_generate_matrix_card_values(uint32_t client_id, uint8_t *array, size_t array_size) {
     sgx_status_t status;
 
     Card card;
@@ -200,7 +132,7 @@ int generate_matrix_card_values(uint32_t client_id, uint8_t *array, size_t array
         uint8_t value;
         status = sgx_read_rand(&value, sizeof(value));
         if (status != SGX_SUCCESS) {
-            ocall_println_string("Error generating random number");
+            ocall_print("Error generating random number");
             return status;
         }
         array[i] = value;
@@ -268,7 +200,7 @@ sgx_status_t ecall_validate_coords(
 
     Card card = deserialize(std::vector<uint8_t>(unsealed, unsealed + unsealed_size));
 
-    ocall_println_string("[-] enclave::unsealed");
+    ocall_print("[-] enclave::unsealed");
 
     *result = 1;
     for (size_t i = 0; i < num_coords; i++) {
@@ -278,7 +210,7 @@ sgx_status_t ecall_validate_coords(
         }
     }
 
-    print_values("validataion result is %d\n", *result);
+    print_values("validation result is %d\n", *result);
 
     card.log.push_back({timestamp, *result});
 
@@ -290,7 +222,7 @@ sgx_status_t ecall_validate_coords(
 
         char buffer[1000];
         snprintf(buffer, sizeof(buffer), "\t [+] timestamp: %lu, validation result: %d", ts, validation_result);
-        ocall_println_string(buffer);
+        ocall_print(buffer);
     }
 
     free(sealed_data);

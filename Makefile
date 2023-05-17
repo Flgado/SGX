@@ -43,7 +43,7 @@ else
 	Urts_Library_Name := sgx_urts
 endif
 
-App_Cpp_Files := App/App.cpp App/sgx_utils/sgx_utils.cpp 
+App_Cpp_Files := App/App.cpp App/sgx_utils/sgx_utils.cpp
 App_Include_Paths := -IApp -I$(SGX_SDK)/include
 
 App_C_Flags := $(SGX_COMMON_CFLAGS) -fPIC -Wno-attributes $(App_Include_Paths)
@@ -84,7 +84,7 @@ else
 endif
 Crypto_Library_Name := sgx_tcrypto
 
-Enclave_Cpp_Files := Enclave/Enclave.cpp Enclave/bscanf.c
+Enclave_Cpp_Files := Enclave/Enclave.cpp Enclave/bscanf.c Enclave/serializer.cpp
 Enclave_Include_Paths := -IEnclave -I$(SGX_SDK)/include -I$(SGX_SDK)/include/tlibc -I$(SGX_SDK)/include/stlport -I$(SGX_SDK)/include/libcxx
 
 Enclave_C_Flags := $(SGX_COMMON_CFLAGS) -nostdinc -fvisibility=hidden -fpie -ffunction-sections -fdata-sections -fstack-protector-strong  
@@ -100,7 +100,7 @@ Enclave_Link_Flags := $(SGX_COMMON_CFLAGS) -Wl,--no-undefined -nostdlib -nodefau
 	
 ## -Wl,--version-script=Enclave/Enclave.lds
 
-Enclave_Cpp_Objects := Enclave/Enclave.o Enclave/bscanf.o
+Enclave_Cpp_Objects := Enclave/Enclave.o Enclave/bscanf.o Enclave/serializer.o
 
 Enclave_Name := enclave.so
 Signed_Enclave_Name := enclave.signed.so
@@ -200,6 +200,10 @@ Enclave/Enclave.o: Enclave/Enclave.cpp
 Enclave/bscanf.o: Enclave/bscanf.c
 	$(CC) $(Enclave_C_Flags) -c $< -o $@
 	@echo "CC  <=  $<"
+
+Enclave/serializer.o: Enclave/serializer.cpp
+	$(CXX) $(Enclave_Cpp_Flags) -c $< -o $@
+	@echo "CXX  <=  $<"
 
 $(Enclave_Name): Enclave/Enclave_t.o $(Enclave_Cpp_Objects)
 	@$(CXX) $^ -o $@ $(Enclave_Link_Flags)

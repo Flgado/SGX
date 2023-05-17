@@ -17,18 +17,6 @@ void ocall_print(const char *str) {
     printf("%s\n", str);
 }
 
-void ocall_print_error(const char *str) {
-    std::cerr << str << std::endl;
-}
-
-void ocall_print_string(const char *str) {
-    std::cout << str;
-}
-
-void ocall_println_string(const char *str) {
-    std::cout << str << std::endl;
-}
-
 void ocall_copy_file(const char* src_path, const char* dest_path) {
     FILE* src_file = fopen(src_path, "rb");
     if (src_file == NULL) {
@@ -120,7 +108,7 @@ int main(int argc, char const *argv[]) {
         return 0;
     }
 
-    ocall_println_string("[-] enclave::starting...");
+    ocall_print("[-] enclave::starting...");
 
     int ret;
     sgx_status_t retval;
@@ -129,49 +117,22 @@ int main(int argc, char const *argv[]) {
         return 1;
     }
 
-    ocall_println_string("[-] enclave::started");
+    ocall_print("[-] enclave::started");
 
     if (strcmp(argv[1], "--generate") == 0) {
-        ocall_println_string("\t[+] enclave::generate_matrix_card_values");
+        ocall_print("\t[+] enclave::generate_matrix_card_values");
 
         // Generate random array
         uint8_t *array = (uint8_t *)malloc(MATRIX_CARD_SIZE * sizeof(uint8_t));
         uint32_t client_id;
         sscanf(argv[2], "%d", &client_id);
-        sgx_status_t status = generate_matrix_card_values(global_eid, &ret, client_id, array, MATRIX_CARD_SIZE);
+        sgx_status_t status = ecall_generate_matrix_card_values(global_eid, &ret, client_id, array, MATRIX_CARD_SIZE);
         if (status != SGX_SUCCESS) {
             return 1;
         }
 
         pretty_print_arr(array, MATRIX_CARD_SIZE, 8);
 
-        //ocall_println_string("\t[+] enclave::sealing");
-
-        //uint32_t arr_size = sizeof(uint8_t) * MATRIX_CARD_SIZE;
-        //uint32_t sealed_data_size = 0;
-        //ret = get_sealed_data_size(global_eid, &sealed_data_size, arr_size);
-        //if (ret != SGX_SUCCESS) {
-        //    return -1;
-        //}
-
-        //// Seal the array
-        //uint8_t *sealed_data_buf = new uint8_t[sealed_data_size];
-
-        //ret = seal_data(global_eid, &retval, array, arr_size, sealed_data_buf, sealed_data_size);
-
-        //if (ret != SGX_SUCCESS) {
-        //    ocall_println_string("error");
-        //    free(sealed_data_buf);
-        //    return -1;
-        //}
-        //else if (retval != SGX_SUCCESS) {
-        //    ocall_println_string("error 2");
-        //    free(sealed_data_buf);
-        //    return -1;
-        //}
-
-        //ocall_println_string("\t[+] enclave::sealed");
-        //ecall_insert_matrix_card(global_eid, sealed_data_buf, sealed_data_size);
         return 0;
     }
 
