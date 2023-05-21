@@ -11,6 +11,11 @@
 #else
 // For trusted part copy required standard library declarations from stdlib headers
 
+typedef struct _ec256_public_t {
+    uint8_t gx[32];
+    uint8_t gy[32];
+} ec256_public_t;
+
 typedef struct Coords {
     uint8_t x;
     uint8_t y;

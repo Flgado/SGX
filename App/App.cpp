@@ -4,130 +4,109 @@
 #include <string>
 #include "Enclave_u.h"
 #include "sgx_urts.h"
+#include "sgx_trts.h"
+#include "sgx_ukey_exchange.h"
 #include "sgx_utils/sgx_utils.h"
 #include "time.h"
+#include "utils.h"
+#include <openssl/ec.h>
+#include <openssl/pem.h>
+#include <openssl/err.h>
+#include <openssl/evp.h>
+#include <openssl/rand.h>
 
 #define MATRIX_CARD_SIZE 64
 #define ENCLAVE_FILE "Enclave.signed.so"
+#define KEY_SIZE 16
+#define TAG_SIZE 16
 
 sgx_enclave_id_t global_eid = 0;
 
-// OCall implementations
-void ocall_print(const char *str) {
-    printf("%s\n", str);
+int encrypt_data(const char* plaintext, size_t plaintext_len, uint8_t* key, uint8_t* ciphertext, uint8_t* tag) {
+    EVP_CIPHER_CTX *ctx;
+
+    int len;
+    int ciphertext_len = 0;
+
+    /* Create and initialise the context */
+    if(!(ctx = EVP_CIPHER_CTX_new())) printf("Failed to create new EVP_CIPHER_CTX");
+
+    uint8_t *iv = (uint8_t *) calloc(12, sizeof(uint8_t));
+
+    /* Initialise the encryption operation. */
+    if(1 != EVP_EncryptInit_ex(ctx, EVP_aes_128_gcm(), NULL, key, iv)) 
+    printf("Failed to initialize encryption");
+
+    /* Provide the message to be encrypted, and obtain the encrypted output. */
+    if(1 != EVP_EncryptUpdate(ctx, ciphertext, &len, (const unsigned char*) plaintext, plaintext_len)) 
+        printf("Failed to update encryption");
+
+    ciphertext_len = len;
+
+    /* Finalise the encryption. */
+    if(1 != EVP_EncryptFinal_ex(ctx, ciphertext + len, &len)) 
+        printf("Failed to finalize encryption");
+
+    ciphertext_len += len;
+
+    if(1 != EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_GET_TAG, 16, tag)) 
+        printf("Failed to get authentication tag");
+
+    /* Clean up */
+    EVP_CIPHER_CTX_free(ctx);
+
+    return ciphertext_len;
 }
 
-void ocall_copy_file(const char* src_path, const char* dest_path) {
-    FILE* src_file = fopen(src_path, "rb");
-    if (src_file == NULL) {
-        printf("Unable to open source file for reading.\n");
-        return;
-    }
-
-    FILE* dest_file = fopen(dest_path, "wb");
-    if (dest_file == NULL) {
-        printf("Unable to open destination file for writing.\n");
-        fclose(src_file);
-        return;
-    }
-
-    char buffer[4096];
-    size_t bytes;
-
-    while ((bytes = fread(buffer, 1, sizeof(buffer), src_file)) > 0) {
-        fwrite(buffer, 1, bytes, dest_file);
-    }
-
-    fclose(src_file);
-    fclose(dest_file);
-}
-
-void pretty_print_arr(const uint8_t *data, size_t size, size_t max_per_line) {
-    for (size_t i = 0; i < size; ++i) {
-        if (i == 0) {
-            std::cout << "\t";
-        }
-        std::cout << std::setw(3) << std::setfill('0') << std::dec << static_cast<int>(data[i]) << ' ';
-
-        if ((i + 1) % max_per_line == 0) {
-            std::cout << std::endl
-                      << "\t";
-        }
-    }
-    std::cout << std::dec << std::endl;
-}
-
-void ocall_text_print(uint8_t *data, uint32_t data_size) {
-    for (int i = 0; i < data_size; i++) {
-        std::cout << data[i];
-    }
-    return;
-}
-
-void print_usage(char const *argv[]) {
-    printf("usage: %s [--generate (generate) | --validate <client_id>]\n", argv[0]);
-}
-
-int parse_coords(char const *input, struct Coords **coords_arr) {
-    int count = 0;
-
-    const char *ptr = input;
-
-    while ((ptr = strchr(ptr, '=')) != NULL) {
-        count++;
-        ptr++;
-    }
-
-    *coords_arr = (struct Coords *)malloc(count * sizeof(struct Coords));
-    if (!*coords_arr) {
-        printf("error while parsing coordinates\n");
-        exit(1);
-    }
-
-    int index = 0;
-    ptr = input;
-    while (sscanf(ptr, "%c%hhu=%hhu", &((*coords_arr)[index].y), &((*coords_arr)[index].x), &((*coords_arr)[index].val)) == 3) {
-        (*coords_arr)[index].y = toupper((*coords_arr)[index].y) - 'A';
-
-        ptr = strchr(ptr, ',');
-
-        if (!ptr) {
-            break;
-        }
-
-        ptr++;
-        index++;
-    }
-
-    return count;
-}
-
-int main(int argc, char const *argv[]) {
-    if (argc <= 1) {
+int main(int argc, char const *argv[])
+{
+    if (argc <= 1)
+    {
         print_usage(argv);
         return 0;
     }
 
-    ocall_print("[-] enclave::starting...");
-
     int ret;
     sgx_status_t retval;
-    if (initialize_enclave(&global_eid, "enclave.token", "enclave.signed.so") < 0) {
-        std::cout << "Fail to initialize enclave." << std::endl;
+
+    printf("app: initializing enclave\n");
+    if (initialize_enclave(&global_eid, "enclave.token", "enclave.signed.so") < 0)
+    {
+        printf("app: failed to initialize enclave\n");
         return 1;
     }
 
-    ocall_print("[-] enclave::started");
+    printf("app: enclave started\n");
 
-    if (strcmp(argv[1], "--generate") == 0) {
-        ocall_print("\t[+] enclave::generate_matrix_card_values");
+    uint8_t key[KEY_SIZE];
+    ecall_generate_key(global_eid, &retval, key, KEY_SIZE);
+    if (retval != SGX_SUCCESS) {
+        printf("failed to generate key\n");
+    }
+
+    if (retval != SGX_SUCCESS)
+    {
+        printf("app: failed to create key in enclave\n");
+        return 1;
+    }
+
+    if (strcmp(argv[1], "--setup") == 0)
+    {
+        if (argc != 3)
+        {
+            print_usage(argv);
+            return 0;
+        }
+
+        printf("\tapp: client card setup requested\n");
 
         // Generate random array
         uint8_t *array = (uint8_t *)malloc(MATRIX_CARD_SIZE * sizeof(uint8_t));
         uint32_t client_id;
         sscanf(argv[2], "%d", &client_id);
-        sgx_status_t status = ecall_generate_matrix_card_values(global_eid, &ret, client_id, array, MATRIX_CARD_SIZE);
-        if (status != SGX_SUCCESS) {
+        sgx_status_t status = ecall_setup_card(global_eid, &ret, client_id, array, MATRIX_CARD_SIZE);
+        if (status != SGX_SUCCESS)
+        {
             return 1;
         }
 
@@ -156,12 +135,38 @@ int main(int argc, char const *argv[]) {
 
         time_t timestamp = time(NULL);
 
-        int ret = ecall_validate_coords(global_eid, &retval, client_id, coords_arr, num_records, &result, (uint64_t) timestamp);
+        // coords encryption
+        //size_t plaintext_len = num_records * sizeof(Coords);
+        //uint8_t* ciphertext = (uint8_t*) malloc(plaintext_len);
+        //uint8_t* tag = (uint8_t*) malloc(TAG_SIZE);
+        //int len = encrypt_data(argv[2], plaintext_len, key, ciphertext, tag);
 
-        printf("\n -- validation result %s\n", result == 1 ? "true": "false");
+        int ret = ecall_validate_coords(global_eid, &retval, client_id, coords_arr, num_records, &result, (uint64_t)timestamp);
+
+        printf("\n -- validation result %s\n", result == 1 ? "true" : "false");
 
         return 0;
     }
 
-    return 1;
+    if (strcmp(argv[1], "--logs") == 0) {
+        if (argc != 3) {
+            print_usage(argv);
+            return 0;
+        }
+
+        uint32_t client_id;
+        sscanf(argv[2], "%d", &client_id);
+        sgx_status_t retval = SGX_SUCCESS;
+
+        // client_id encryption
+        size_t plaintext_len = strlen(argv[2]);
+        uint8_t* ciphertext = (uint8_t*) malloc(plaintext_len);
+        uint8_t* tag = (uint8_t*) malloc(TAG_SIZE);
+        int len = encrypt_data(argv[2], plaintext_len, key, ciphertext, tag);
+
+        // call ecall_print_logs with encrypted client_id
+        ecall_print_logs(global_eid, &retval, ciphertext, len, tag);
+    }
+
+    return 0;
 }

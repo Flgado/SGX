@@ -1,3 +1,4 @@
+#include "sgx_tcrypto.h"
 #include "Enclave_t.h"
 #include "sgx_trts.h"
 #include "sgx_tseal.h"
@@ -14,6 +15,7 @@
 #include <cstring>
 
 uint8_t *current_stored_value;
+sgx_ec256_private_t private_key;
 
 void print_values(char *format, ...) {
     char buff[128];
@@ -22,6 +24,35 @@ void print_values(char *format, ...) {
     vsnprintf(buff, sizeof(buff), format, args);
     va_end(args);
     ocall_print(buff);
+}
+
+#define KEY_SIZE 16
+#define IV_SIZE 12
+
+uint8_t enclave_key[KEY_SIZE];
+sgx_status_t ecall_generate_key(uint8_t* key, size_t key_size) {
+    if (key_size != KEY_SIZE) {
+        return SGX_ERROR_INVALID_PARAMETER;
+    }
+
+    sgx_read_rand(key, key_size);
+    for(int i = 0; i < KEY_SIZE; i++) {
+        enclave_key[i] = key[i];
+    }
+
+    return SGX_SUCCESS;
+}
+
+sgx_status_t decrypt_data(uint8_t* ciphertext, size_t ciphertext_size, uint8_t* tag) {
+    uint8_t plaintext[ciphertext_size];
+
+    sgx_aes_gcm_128bit_key_t aes_key;
+    memcpy(aes_key, enclave_key, KEY_SIZE);
+
+    uint8_t *iv = (uint8_t *) calloc(IV_SIZE, sizeof(uint8_t));
+
+    sgx_status_t status = sgx_rijndael128GCM_decrypt(&aes_key, ciphertext, ciphertext_size, ciphertext, iv, IV_SIZE, NULL, 0, (sgx_aes_gcm_128bit_tag_t*)tag);
+    return status;
 }
 
 sgx_status_t unseal(uint8_t* sealed_data_ptr, size_t sealed_data_size, uint8_t** plaintext_ptr, size_t* plaintext_size_ptr, uint8_t** aad_ptr, size_t* aad_size_ptr) {
@@ -122,7 +153,7 @@ int ecall_encrypt_card(Card *card) {
     free(sealed_data);
 }
 
-int ecall_generate_matrix_card_values(uint32_t client_id, uint8_t *array, size_t array_size) {
+int ecall_setup_card(uint32_t client_id, uint8_t *array, size_t array_size) {
     sgx_status_t status;
 
     Card card;
@@ -142,6 +173,90 @@ int ecall_generate_matrix_card_values(uint32_t client_id, uint8_t *array, size_t
     int ret = ecall_encrypt_card(&card);
 
     return SGX_SUCCESS; 
+}
+
+uint32_t convert_string_to_uint32_t(uint8_t* str) {
+    char* endptr;
+    long int value = strtol((const char*)str, &endptr, 10);
+    
+    // Check for conversion errors or invalid input
+    if (*endptr != '\0' || value < 0 || value > UINT32_MAX) {
+        // Handle error or invalid input case
+        // Return an appropriate value or indicate an error condition
+    }
+    
+    return (uint32_t)value;
+}
+
+sgx_status_t ecall_print_logs(uint8_t *enc_client_id, int enc_sz, uint8_t *tag) {
+    sgx_status_t decryption_result = decrypt_data(enc_client_id, enc_sz, tag);
+    if (decryption_result != SGX_SUCCESS) {
+        print_values("failed to decrypt\n");
+    }
+
+    uint32_t client_id = convert_string_to_uint32_t(enc_client_id);
+
+    sgx_status_t retval = SGX_SUCCESS;
+    int ret = 0;
+    int ocall_return = 0;
+
+    size_t sealed_data_size = 0;
+
+    sgx_status_t ocall_status = ocall_get_sealed_data_size(&ocall_return, (int) client_id, &sealed_data_size);
+    if (ocall_status != SGX_SUCCESS) {
+        print_values("Error calling ocall: %d\n", ocall_status);
+        return ocall_status;
+    }
+    if (ocall_return != 0) {
+        print_values("Error in ocall: %d\n", ocall_return);
+        return SGX_ERROR_UNEXPECTED;
+    }
+
+    uint8_t *sealed_data = (uint8_t*) malloc(sealed_data_size);
+    if (sealed_data == NULL) {
+        print_values("Error allocating memory for sealed data\n");
+        return SGX_ERROR_OUT_OF_MEMORY;
+    }
+
+    ocall_status = ocall_read_sealed_data(&ocall_return, (int) client_id, sealed_data, sealed_data_size);
+    if (ocall_status != SGX_SUCCESS) {
+        print_values("Error calling ocall: %d\n", ocall_status);
+        return ocall_status;
+    }
+    if (ocall_return != 0) {
+        print_values("Error in ocall: %d\n", ocall_return);
+        return SGX_ERROR_UNEXPECTED;
+    }
+
+    uint8_t *unsealed = NULL;
+    size_t unsealed_size = 0;
+    uint8_t *aad = NULL;
+    size_t aad_size = 0;
+
+    retval = unseal(sealed_data, sealed_data_size, &unsealed, &unsealed_size, &aad, &aad_size);
+    if (retval != SGX_SUCCESS) {
+        print_values("Error unsealing data: %d\n", retval);
+        return retval;
+    }
+
+    if (client_id != *(uint32_t*) aad) {
+        print_values("failed signature verification\n");
+        return retval;
+    }
+
+    Card card = deserialize(std::vector<uint8_t>(unsealed, unsealed + unsealed_size));
+    if (!card.log.empty()) {
+        for (const auto &entry : card.log) {
+            uint64_t ts = (uint64_t) entry.first;
+            bool validation_result = (bool) entry.second;
+
+            char buffer[1000];
+            snprintf(buffer, sizeof(buffer), "timestamp: %lu, validation result: %d", ts, validation_result);
+            ocall_print(buffer);
+        }
+    }
+
+    return retval;
 }
 
 sgx_status_t ecall_validate_coords(
@@ -199,6 +314,16 @@ sgx_status_t ecall_validate_coords(
     }
 
     Card card = deserialize(std::vector<uint8_t>(unsealed, unsealed + unsealed_size));
+    if (!card.log.empty()) {
+        if (timestamp <= card.log.back().first) {
+            free(sealed_data);
+            free(unsealed);
+            free(aad);
+
+            print_values("TIMESTAMP VALIDATION FAILED!\n");
+            return retval;
+        }
+    }
 
     ocall_print("[-] enclave::unsealed");
 
@@ -210,21 +335,10 @@ sgx_status_t ecall_validate_coords(
         }
     }
 
-    print_values("validation result is %d\n", *result);
-
     card.log.push_back({timestamp, *result});
 
     ecall_encrypt_card(&card);
-
-    for (const auto &entry : card.log) {
-        uint64_t ts = (uint64_t) entry.first;
-        bool validation_result = (bool) entry.second;
-
-        char buffer[1000];
-        snprintf(buffer, sizeof(buffer), "\t [+] timestamp: %lu, validation result: %d", ts, validation_result);
-        ocall_print(buffer);
-    }
-
+    
     free(sealed_data);
     free(unsealed);
     free(aad);
