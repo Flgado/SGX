@@ -1,88 +1,10 @@
 #ifndef _OCALL_TYPES_H_
 #define _OCALL_TYPES_H_
 
-// Divide system definitions into trusted and untrusted part for ocalls type declarations
-#ifdef SGX_UNTRUSTED
-// For untrusted part take standard library headers
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
-
-#else
-// For trusted part copy required standard library declarations from stdlib headers
-
-typedef struct _ec256_public_t {
-    uint8_t gx[32];
-    uint8_t gy[32];
-} ec256_public_t;
-
 typedef struct Coords {
     uint8_t x;
     uint8_t y;
     uint8_t val;
 } Coords;
 
-//typedef struct Pair {
-//    uint64_t timestamp;
-//    bool second;
-//} Pair;
-//
-//typedef struct Card {
-//    uint32_t client_id;
-//    uint8_t encrypted_data[64];
-//    Pair log[1000000];
-//    size_t log_length; 
-//} Card;
-
-
-// For ocall_interface.c do not redefine these types, otherwise define
-#ifndef DO_NOT_REDEFINE_FOR_OCALL
-
-typedef unsigned long int __dev_t;
-typedef unsigned int __uid_t;
-typedef unsigned int __gid_t;
-typedef unsigned long int __ino_t;
-typedef unsigned long int __ino64_t;
-typedef unsigned int __mode_t;
-typedef unsigned int mode_t;
-typedef unsigned long int __nlink_t;
-typedef long int __off_t;
-typedef long int __off64_t;
-typedef int __pid_t;
-typedef long int __clock_t;
-typedef unsigned long int __rlim_t;
-typedef unsigned long int __rlim64_t;
-typedef unsigned int __id_t;
-typedef long int __time_t;
-typedef unsigned int __useconds_t;
-typedef long int __suseconds_t;
-typedef long int __blksize_t;
-typedef long int __blkcnt_t;
-typedef long int __blkcnt64_t;
-typedef __off_t off_t;
-typedef long int __syscall_slong_t;
-
-struct stat
-{
-    __dev_t st_dev;
-    __ino_t st_ino;
-    __nlink_t st_nlink;
-    __mode_t st_mode;
-    __uid_t st_uid;
-    __gid_t st_gid;
-    int __pad0;
-    __dev_t st_rdev;
-    __off_t st_size;
-    __blksize_t st_blksize;
-    __blkcnt_t st_blocks;
-    __time_t st_atim;
-    __time_t st_mtim;
-    __time_t st_ctim;
-    __syscall_slong_t __glibc_reserved[3];
-};
-
-#endif // DO_NOT_REDEFINE_FOR_OCALL_INTERFACE
-
-#endif // SGX_UNTRUSTED
-
-#endif // _OCALL_TYPES_H_
+#endif

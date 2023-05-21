@@ -11,6 +11,11 @@ void ocall_print(const char *str) {
 }
 
 int ocall_write_sealed_data(uint32_t client_id, uint8_t *sealed_data, size_t sealed_data_size) {
+    struct stat st = {0};
+    if (stat("cards", &st) == -1) {
+        mkdir("cards", 0700);
+    }
+
     char file_name[20];
     sprintf(file_name, "cards/%d", client_id);
 
@@ -32,6 +37,11 @@ int ocall_write_sealed_data(uint32_t client_id, uint8_t *sealed_data, size_t sea
 }
 
 int ocall_get_sealed_data_size(uint32_t client_id, size_t *file_size) {
+    struct stat st = {0};
+    if (stat("cards", &st) == -1) {
+        mkdir("cards", 0700);
+    }
+
     char file_name[20];
     sprintf(file_name, "cards/%d", client_id);
 
@@ -49,6 +59,11 @@ int ocall_get_sealed_data_size(uint32_t client_id, size_t *file_size) {
 }
 
 int ocall_read_sealed_data(uint32_t client_id, uint8_t* data, size_t data_size) {
+    struct stat st = {0};
+    if (stat("cards", &st) == -1) {
+        mkdir("cards", 0700);
+    }
+
     char file_name[20];
     sprintf(file_name, "cards/%d", client_id);
 

@@ -1,5 +1,3 @@
-#include "Enclave_t.h"
-
 #include <vector>
 #include <utility>
 #include <cstdint>

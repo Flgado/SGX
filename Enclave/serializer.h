@@ -1,10 +1,6 @@
 #ifndef SERIALIZER_H_
 #define SERIALIZER_H_
 
-#include "Enclave_t.h"
-#include "sgx_trts.h"
-#include "sgx_tseal.h"
-
 #include <vector>
 
 struct Card {

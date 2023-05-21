@@ -12,10 +12,6 @@ enclave {
         int ocall_write_sealed_data(int client_id, [in, size=sealed_data_size] uint8_t *sealed_data, size_t sealed_data_size);
         int ocall_get_sealed_data_size(int client_id, [out] size_t* file_size);
         int ocall_read_sealed_data(int client_id, [out, size=data_size] uint8_t* data, size_t data_size);
-
-        /* define OCALLs here. */
         void ocall_print([in, string]const char* str);
-
-        /* void ocall_copy_file([in, string] const char* src_path, [in, string] const char* dest_path); */
     };
 };

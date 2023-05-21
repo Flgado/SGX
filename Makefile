@@ -84,7 +84,7 @@ else
 endif
 Crypto_Library_Name := sgx_tcrypto
 
-Enclave_Cpp_Files := Enclave/Enclave.cpp Enclave/bscanf.c Enclave/serializer.cpp
+Enclave_Cpp_Files := Enclave/Enclave.cpp Enclave/serializer.cpp Enclave/encryption.cpp
 Enclave_Include_Paths := -IEnclave -I$(SGX_SDK)/include -I$(SGX_SDK)/include/tlibc -I$(SGX_SDK)/include/stlport -I$(SGX_SDK)/include/libcxx
 
 Enclave_C_Flags := $(SGX_COMMON_CFLAGS) -nostdinc -fvisibility=hidden -fpie -ffunction-sections -fdata-sections -fstack-protector-strong -w
@@ -100,7 +100,7 @@ Enclave_Link_Flags := $(SGX_COMMON_CFLAGS) -Wl,--no-undefined -nostdlib -nodefau
 	
 ## -Wl,--version-script=Enclave/Enclave.lds
 
-Enclave_Cpp_Objects := Enclave/Enclave.o Enclave/bscanf.o Enclave/serializer.o
+Enclave_Cpp_Objects := Enclave/Enclave.o Enclave/serializer.o Enclave/encryption.o
 
 Enclave_Name := enclave.so
 Signed_Enclave_Name := enclave.signed.so
@@ -197,11 +197,11 @@ Enclave/Enclave.o: Enclave/Enclave.cpp
 	$(CXX) $(Enclave_Cpp_Flags) -c $< -o $@
 	@echo "CXX  <=  $<"
 
-Enclave/bscanf.o: Enclave/bscanf.c
-	$(CC) $(Enclave_C_Flags) -c $< -o $@
-	@echo "CC  <=  $<"
-
 Enclave/serializer.o: Enclave/serializer.cpp
+	$(CXX) $(Enclave_Cpp_Flags) -c $< -o $@
+	@echo "CXX  <=  $<"
+
+Enclave/encryption.o: Enclave/encryption.cpp
 	$(CXX) $(Enclave_Cpp_Flags) -c $< -o $@
 	@echo "CXX  <=  $<"
 
