@@ -28,40 +28,39 @@ int encrypt_data(const char* plaintext, size_t plaintext_len, uint8_t* key, uint
     int len;
     int ciphertext_len = 0;
 
-    /* Create and initialise the context */
-    if(!(ctx = EVP_CIPHER_CTX_new())) printf("Failed to create new EVP_CIPHER_CTX");
+    if(!(ctx = EVP_CIPHER_CTX_new())) {
+        printf("Failed to create new EVP_CIPHER_CTX");
+    }
 
     uint8_t *iv = (uint8_t *) calloc(12, sizeof(uint8_t));
 
-    /* Initialise the encryption operation. */
-    if(1 != EVP_EncryptInit_ex(ctx, EVP_aes_128_gcm(), NULL, key, iv)) 
-    printf("Failed to initialize encryption");
+    if(1 != EVP_EncryptInit_ex(ctx, EVP_aes_128_gcm(), NULL, key, iv)) {
+        printf("Failed to initialize encryption");
+    }
 
-    /* Provide the message to be encrypted, and obtain the encrypted output. */
-    if(1 != EVP_EncryptUpdate(ctx, ciphertext, &len, (const unsigned char*) plaintext, plaintext_len)) 
+    if(1 != EVP_EncryptUpdate(ctx, ciphertext, &len, (const unsigned char*) plaintext, plaintext_len)) {
         printf("Failed to update encryption");
+    }
 
     ciphertext_len = len;
 
-    /* Finalise the encryption. */
-    if(1 != EVP_EncryptFinal_ex(ctx, ciphertext + len, &len)) 
+    if(1 != EVP_EncryptFinal_ex(ctx, ciphertext + len, &len)) {
         printf("Failed to finalize encryption");
+    }
 
     ciphertext_len += len;
 
-    if(1 != EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_GET_TAG, 16, tag)) 
+    if(1 != EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_GET_TAG, 16, tag)) {
         printf("Failed to get authentication tag");
+    }
 
-    /* Clean up */
     EVP_CIPHER_CTX_free(ctx);
 
     return ciphertext_len;
 }
 
-int main(int argc, char const *argv[])
-{
-    if (argc <= 1)
-    {
+int main(int argc, char const *argv[]) {
+    if (argc <= 1) {
         print_usage(argv);
         return 0;
     }
@@ -70,8 +69,7 @@ int main(int argc, char const *argv[])
     sgx_status_t retval;
 
     printf("app: initializing enclave\n");
-    if (initialize_enclave(&global_eid, "enclave.token", "enclave.signed.so") < 0)
-    {
+    if (initialize_enclave(&global_eid, "enclave.token", "enclave.signed.so") < 0) {
         printf("app: failed to initialize enclave\n");
         return 1;
     }
@@ -84,16 +82,13 @@ int main(int argc, char const *argv[])
         printf("failed to generate key\n");
     }
 
-    if (retval != SGX_SUCCESS)
-    {
+    if (retval != SGX_SUCCESS) {
         printf("app: failed to create key in enclave\n");
         return 1;
     }
 
-    if (strcmp(argv[1], "--setup") == 0)
-    {
-        if (argc != 3)
-        {
+    if (strcmp(argv[1], "--setup") == 0) {
+        if (argc != 3) {
             print_usage(argv);
             return 0;
         }
@@ -105,8 +100,7 @@ int main(int argc, char const *argv[])
         uint32_t client_id;
         sscanf(argv[2], "%d", &client_id);
         sgx_status_t status = ecall_setup_card(global_eid, &ret, client_id, array, MATRIX_CARD_SIZE);
-        if (status != SGX_SUCCESS)
-        {
+        if (status != SGX_SUCCESS) {
             return 1;
         }
 
