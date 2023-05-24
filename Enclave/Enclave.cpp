@@ -6,8 +6,8 @@
 #include "serializer.h"
 #include "encryption.h"
 
-#define ENCLAVE_VERSION 1
-#define KEY_POLICY SGX_KEYPOLICY_MRSIGNER
+#define ENCLAVE_VERSION 2
+#define KEY_POLICY SGX_KEYPOLICY_MRENCLAVE
 
 sgx_dh_session_t dh_session;
 sgx_key_128bit_t dh_key;
@@ -85,34 +85,6 @@ sgx_status_t _unseal(uint8_t* sealed_data_ptr, size_t sealed_data_size, uint8_t*
     return SGX_SUCCESS;
 }
 
-sgx_status_t ecall_migration_finalize(uint8_t *encrypted, size_t encrypted_sz, uint8_t *mac, size_t mac_sz) {
-    printf("enclave: ecall_migration_finalize called\n");
-    sgx_status_t retval = SGX_SUCCESS;
-    int ret = 0;
-    int ocall_return = 0;
-
-    uint8_t *decrypted = (uint8_t*) malloc(sizeof(uint8_t) * encrypted_sz);
-    uint8_t *iv = (uint8_t *) calloc(IV_SIZE, sizeof(uint8_t));
-
-    ret = sgx_rijndael128GCM_decrypt(
-        &dh_key, 
-        encrypted, 
-        encrypted_sz, 
-        decrypted, 
-        iv, 
-        IV_SIZE, 
-        NULL, 
-        0, 
-        (sgx_aes_gcm_128bit_tag_t*)mac
-    );
-
-    if (ret != SGX_SUCCESS) {
-        printf("error while decrypting");
-    }
-
-    Card card = deserialize(std::vector<uint8_t>(decrypted, decrypted + encrypted_sz));
-    printf("card decrypted on enclave with version %d, for client %d\n", ENCLAVE_VERSION, card.client_id);
-}
 
 sgx_status_t ecall_migration_prepare_record(uint32_t client_id, uint8_t **encrypted, size_t *encrypted_sz, sgx_aes_gcm_128bit_tag_t **out_mac) {
     printf("enclave: ecall_migration_prepare_record called on enclave with version %d for client %d\n", ENCLAVE_VERSION, client_id);
@@ -152,7 +124,7 @@ sgx_status_t ecall_migration_prepare_record(uint32_t client_id, uint8_t **encryp
     uint8_t card_enclave_version = sealed_data[sealed_data_size - 1]; 
     printf("enclave: version %d\n", card_enclave_version);
     if (card_enclave_version != ENCLAVE_VERSION) {
-        printf("Card was sealed with a different enclave version");
+        printf("Card was sealed with a different enclave version\n");
         return SGX_ERROR_UNEXPECTED;
     }
 
@@ -194,6 +166,8 @@ sgx_status_t ecall_migration_prepare_record(uint32_t client_id, uint8_t **encryp
 }
 
 sgx_status_t _seal(uint8_t *plaintext, size_t plaintext_len, uint8_t *aad, size_t aad_len, uint8_t **sealed_data_ptr, size_t *sealed_data_size_ptr) {
+
+
     sgx_status_t status;
 
     uint32_t sealed_data_size = sgx_calc_sealed_data_size((uint32_t)aad_len, (uint32_t)plaintext_len);
@@ -265,6 +239,37 @@ int ecall_encrypt_card(Card *card) {
 
     free(sealed_data);
     free(sealed_with_version);
+}
+
+sgx_status_t ecall_migration_finalize(uint8_t *encrypted, size_t encrypted_sz, uint8_t *mac, size_t mac_sz) {
+    printf("enclave: ecall_migration_finalize called\n");
+    sgx_status_t retval = SGX_SUCCESS;
+    int ret = 0;
+    int ocall_return = 0;
+
+    uint8_t *decrypted = (uint8_t*) malloc(sizeof(uint8_t) * encrypted_sz);
+    uint8_t *iv = (uint8_t *) calloc(IV_SIZE, sizeof(uint8_t));
+
+    ret = sgx_rijndael128GCM_decrypt(
+        &dh_key, 
+        encrypted, 
+        encrypted_sz, 
+        decrypted, 
+        iv, 
+        IV_SIZE, 
+        NULL, 
+        0, 
+        (sgx_aes_gcm_128bit_tag_t*)mac
+    );
+
+    if (ret != SGX_SUCCESS) {
+        printf("error while decrypting");
+    }
+
+    Card card = deserialize(std::vector<uint8_t>(decrypted, decrypted + encrypted_sz));
+    printf("card decrypted on enclave with version %d, for client %d\n", ENCLAVE_VERSION, card.client_id);
+
+    int card_seal_result = ecall_encrypt_card(&card);
 }
 
 int ecall_setup_card(uint32_t client_id, uint8_t *array, size_t array_size) {
