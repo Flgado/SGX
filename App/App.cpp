@@ -21,6 +21,8 @@
 #define TAG_SIZE 16
 
 sgx_enclave_id_t global_eid = 0;
+sgx_enclave_id_t global_eid1 = 0;
+sgx_enclave_id_t global_eid2 = 0;
 
 int encrypt_data(const char* plaintext, size_t plaintext_len, uint8_t* key, uint8_t* ciphertext, uint8_t* tag) {
     EVP_CIPHER_CTX *ctx;
@@ -68,8 +70,87 @@ int main(int argc, char const *argv[]) {
     int ret;
     sgx_status_t retval;
 
+    if (strcmp(argv[1], "--migrate") == 0) { 
+        sgx_status_t ret;
+        sgx_status_t dh_status;
+        sgx_dh_msg1_t msg1;
+        sgx_dh_msg2_t msg2;
+        sgx_dh_msg3_t msg3;
+
+        printf("Migration requested\n");
+
+        printf("app: initializing enclave 1\n");
+        if (initialize_enclave(&global_eid1, "enclave.signed.so") < 0) {
+            printf("app: failed to initialize enclave 1\n");
+            return 1;
+        }
+
+        printf("app: initializing enclave 2\n");
+        if (initialize_enclave(&global_eid2, "enclave.signed2.so") < 0) {
+            printf("app: failed to initialize enclave 2\n");
+            return 1;
+        }
+
+        if((ret = ecall_init_session_initiator(global_eid1, &dh_status)) != SGX_SUCCESS || dh_status != SGX_SUCCESS) {
+          print_error_message((ret != SGX_SUCCESS) ? ret : dh_status, "ecall_init_session_initiator");
+          return 1;
+        }
+
+        if((ret = ecall_init_session_responder(global_eid2, &dh_status)) != SGX_SUCCESS || dh_status != SGX_SUCCESS) {
+          print_error_message((ret != SGX_SUCCESS) ? ret : dh_status, "ecall_init_session_responder");
+          return 1;
+        }
+
+        if((ret = ecall_create_message1(global_eid2, &msg1, &dh_status)) != SGX_SUCCESS || dh_status != SGX_SUCCESS) {
+          print_error_message((ret != SGX_SUCCESS) ? ret : dh_status, "ecall_create_message1");
+          return 1;
+        }
+
+        if((ret = ecall_process_message1(global_eid1, &msg1, &msg2, &dh_status)) != SGX_SUCCESS || dh_status != SGX_SUCCESS) {
+          print_error_message((ret != SGX_SUCCESS) ? ret : dh_status, "ecall_process_message1");
+          return 1;
+        }
+
+        if((ret = ecall_process_message2(global_eid2, &msg2, &msg3, &dh_status)) != SGX_SUCCESS || dh_status != SGX_SUCCESS) {
+          print_error_message((ret != SGX_SUCCESS) ? ret : dh_status, "ecall_process_message2");
+          return 1;
+        }
+
+        if((ret = ecall_process_message3(global_eid1, &msg3, &dh_status)) != SGX_SUCCESS || dh_status != SGX_SUCCESS) {
+          print_error_message((ret != SGX_SUCCESS) ? ret : dh_status, "ecall_process_message3");
+          return 1;
+        }
+
+        if((ret = ecall_show_secret_key(global_eid1)) != SGX_SUCCESS) {
+          print_error_message((ret != SGX_SUCCESS) ? ret : dh_status, "ecall_show_secret_key");
+          return 1;
+        }
+
+        if((ret = ecall_show_secret_key(global_eid2)) != SGX_SUCCESS) {
+          print_error_message((ret != SGX_SUCCESS) ? ret : dh_status, "ecall_show_secret_key");
+          return 1;
+        }
+
+        uint8_t *encrypted = NULL;
+        size_t size = 0;
+        sgx_aes_gcm_128bit_tag_t *out_mac = NULL;
+        ret = ecall_migration_prepare_record(global_eid1, &retval, 1, &encrypted, &size, &out_mac);
+        if (ret != SGX_SUCCESS) {
+            print_error_message((ret != SGX_SUCCESS) ? ret : dh_status, "ecall_migration_prepare_record");
+            return 1;
+        }
+
+        ret = ecall_migration_finalize(global_eid2, &retval, encrypted, size, (uint8_t*) out_mac, 16);
+        if (ret != SGX_SUCCESS) {
+            print_error_message((ret != SGX_SUCCESS) ? ret : dh_status, "ecall_migration_finalize");
+            return 1;
+        }
+
+        return 0;
+    }
+
     printf("app: initializing enclave\n");
-    if (initialize_enclave(&global_eid, "enclave.token", "enclave.signed.so") < 0) {
+    if (initialize_enclave(&global_eid, "enclave.signed.so") < 0) {
         printf("app: failed to initialize enclave\n");
         return 1;
     }

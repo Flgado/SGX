@@ -1,4 +1,5 @@
 enclave {
+    include "sgx_dh.h"
     include "../ocall_types.h"
 
     trusted {
@@ -6,6 +7,19 @@ enclave {
         public sgx_status_t ecall_validate_coords(uint32_t client_id, [in, count=num_coords] Coords* coords, size_t num_coords, [out] uint8_t *result, uint64_t timestamp);
         public sgx_status_t ecall_print_logs([in, size=enc_sz] uint8_t* enc_client_id, int enc_sz, [in, size=16] uint8_t *tag);
         public sgx_status_t ecall_generate_key([out, size=key_size] uint8_t* key, size_t key_size);
+
+        public sgx_status_t ecall_migration_finalize([in, size=encrypted_sz] uint8_t *encrypted, size_t encrypted_sz, [in, size=mac_sz] uint8_t *mac, size_t mac_sz);
+        public sgx_status_t ecall_migration_prepare_record(uint32_t client_id, [out] uint8_t **encrypted, [out] size_t *encrypted_sz, [out] sgx_aes_gcm_128bit_tag_t **out_mac);
+
+        public void ecall_init_session_initiator([out] sgx_status_t *dh_status);
+        public void ecall_init_session_responder([out] sgx_status_t *dh_status);
+        public void ecall_create_message1([out] sgx_dh_msg1_t *msg1, [out] sgx_status_t *dh_status);
+        public void ecall_process_message1([in] const sgx_dh_msg1_t *msg1, [out] sgx_dh_msg2_t *msg2, [out] sgx_status_t *dh_status);
+        public void ecall_process_message2([in] const sgx_dh_msg2_t *msg2, [out] sgx_dh_msg3_t *msg3, [out] sgx_status_t *dh_status);
+        public void ecall_process_message3([in] const sgx_dh_msg3_t *msg3, [out] sgx_status_t *dh_status);
+
+        public void ecall_show_secret_key(void);
+        public void ecall_hello_world(void);
     };
 
     untrusted {
