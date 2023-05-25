@@ -10,9 +10,10 @@
 
 void print_usage(char const *argv[]) {
     printf("usage: %s [--setup <client_id> | --validate <client_id> <coords> | --logs <client_id>]\n", argv[0]);
-    printf("\n--setup:    <client_id> sets up a new client matrix card for a given client identifier");
-    printf("\n--logs:     <client_id> shows the access logs for the client's card");
-    printf("\n--validate: <client_id> <coords> validates coords against the client's matrix card\n");
+    printf("\n--setup:         <client_id> sets up a new client matrix card for a given client identifier");
+    printf("\n--logs:          <client_id> shows the access logs for the client's card");
+    printf("\n--card-versions: <version> shows the cards for a specific version");
+    printf("\n--validate:      <client_id> <coords> validates coords against the client's matrix card\n");
     printf("             * coords should be of type: a0=1,a2=10,a3=20\n");
 }
 

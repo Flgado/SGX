@@ -6,12 +6,18 @@
 #include "serializer.h"
 #include "encryption.h"
 
-#define ENCLAVE_VERSION 2
+#define ENCLAVE_VERSION 3
 #define KEY_POLICY SGX_KEYPOLICY_MRENCLAVE
 
 sgx_dh_session_t dh_session;
 sgx_key_128bit_t dh_key;
 sgx_dh_session_enclave_identity_t dh_identity;
+
+sgx_status_t ecall_get_enclave_version(uint8_t *version) {
+    *version = ENCLAVE_VERSION;
+
+    return SGX_SUCCESS;
+}
 
 void ecall_show_secret_key(void) {
   printf("Enclave AEK:");
@@ -351,7 +357,7 @@ sgx_status_t ecall_print_logs(uint8_t *enc_client_id, int enc_sz, uint8_t *tag) 
     uint8_t card_enclave_version = sealed_data[sealed_data_size - 1]; 
     printf("enclave: version %d\n", card_enclave_version);
     if (card_enclave_version != ENCLAVE_VERSION) {
-        printf("Card was sealed with a different enclave version");
+        printf("Card was sealed with a different enclave version\n");
         return SGX_ERROR_UNEXPECTED;
     }
 
@@ -427,7 +433,7 @@ sgx_status_t ecall_validate_coords(
     uint8_t card_enclave_version = sealed_data[sealed_data_size - 1]; 
     printf("enclave: version %d\n", card_enclave_version);
     if (card_enclave_version != ENCLAVE_VERSION) {
-        printf("Card was sealed with a different enclave version");
+        printf("Card was sealed with a different enclave version\n");
         return SGX_ERROR_UNEXPECTED;
     }
 

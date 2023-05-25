@@ -10,6 +10,7 @@ enclave {
 
         public sgx_status_t ecall_migration_finalize([in, size=encrypted_sz] uint8_t *encrypted, size_t encrypted_sz, [in, size=mac_sz] uint8_t *mac, size_t mac_sz);
         public sgx_status_t ecall_migration_prepare_record(uint32_t client_id, [out] uint8_t **encrypted, [out] size_t *encrypted_sz, [out] sgx_aes_gcm_128bit_tag_t **out_mac);
+        public sgx_status_t ecall_get_enclave_version([out] uint8_t *version);
 
         public void ecall_init_session_initiator([out] sgx_status_t *dh_status);
         public void ecall_init_session_responder([out] sgx_status_t *dh_status);
