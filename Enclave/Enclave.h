@@ -13,7 +13,7 @@
  * Enclave's version. This variable should be updated in every version
  * of the enclave, in increments of 1
 */
-#define ENCLAVE_VERSION 1
+#define ENCLAVE_VERSION 2
 
 /*
  * Policy for the sealing key. If we use MRENCLAVE, subsequent versions
@@ -109,10 +109,14 @@ sgx_status_t ecall_validate_coords(
     uint64_t timestamp
 );
 
-
 /*
  * Gets a card from the client id
 */
 int get_card_from_client_id(uint32_t client_id, Card *card);
+
+/*
+ * Converts a string to uinsigned int
+*/
+uint32_t convert_string_to_uint32_t(uint8_t* str);
 
 #endif
