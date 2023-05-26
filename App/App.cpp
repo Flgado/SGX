@@ -19,8 +19,10 @@
 #define ENCLAVE_FILE "Enclave.signed.so"
 #define KEY_SIZE 16
 #define TAG_SIZE 16
+#define ENCLAVE_PUBLIC_KEY_SIZE 32
 
 sgx_enclave_id_t global_eid = 0;
+struct PublicKey enclave_public_key;
 
 int encrypt_data(const char* plaintext, size_t plaintext_len, uint8_t* key, uint8_t* ciphertext, uint8_t* tag) {
     EVP_CIPHER_CTX *ctx;
@@ -59,6 +61,89 @@ int encrypt_data(const char* plaintext, size_t plaintext_len, uint8_t* key, uint
     return ciphertext_len;
 }
 
+static bool validate_signature(int* result, const unsigned char* data, uint32_t data_len, Signature enclave_signature)
+{
+    EC_KEY* ec_key;
+    ECDSA_SIG* ecdsa_sig;
+
+    // Creat an EC_KEY object and set the public key
+    ec_key = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
+
+    if(!ec_key)
+    {
+        fprintf(stderr, "Failed at EC_KEY_new_curve_name().\n");
+        return false;
+    }
+
+    // Set the public key coordinates
+    BIGNUM* x = BN_lebin2bn(enclave_public_key.gx, ENCLAVE_PUBLIC_KEY_SIZE, NULL);
+    BIGNUM* y = BN_lebin2bn(enclave_public_key.gy, ENCLAVE_PUBLIC_KEY_SIZE, NULL);
+    if(EC_KEY_set_public_key_affine_coordinates(ec_key, x, y) <=0)
+    {
+        fprintf(stderr, "Failed at EC_KEY_set_public_key_affine_coordinates().\n");
+        BN_free(x);
+        BN_free(y);
+        return false;
+    }
+    BN_free(x);
+    BN_free(y);
+
+    // Create an ECDSA_SIG object and set the signature values
+    ecdsa_sig = ECDSA_SIG_new();
+    if(!ecdsa_sig)
+    {
+        fprintf(stderr, "Failed to create ECDSA sign.\n");
+        EC_KEY_free(ec_key);
+        return false;
+    }
+
+    // set the signature r value
+    BIGNUM* r = BN_lebin2bn(enclave_signature.r, 32, NULL);
+    if(!r)
+    {
+        fprintf(stderr, "Failed to create signature r.\n");
+        ECDSA_SIG_free(ecdsa_sig);
+        EC_KEY_free(ec_key);
+        return false;
+    }
+
+    BIGNUM* s = BN_lebin2bn(enclave_signature.s, 32, NULL);
+    if(!s)
+    {
+        fprintf(stderr, "Failed to create signature s.\n");
+        ECDSA_SIG_free(ecdsa_sig);
+        EC_KEY_free(ec_key);
+        return false;
+    }
+
+    // Assign r and s values for signature
+    if(ECDSA_SIG_set0(ecdsa_sig, r, s) == 0)
+    {
+        fprintf(stderr, "Failed at ECDSA_SIG_set0().\n");
+        ECDSA_SIG_free(ecdsa_sig);
+        EC_KEY_free(ec_key);
+        return false;
+    }
+
+    // Compute the SHA256 hash of the message
+    uint8_t hash[SHA256_DIGEST_LENGTH];
+    if(!SHA256(data, data_len, hash))
+    {
+        fprintf(stderr, "Failed to compute SH256 hash.\n");
+        ECDSA_SIG_free(ecdsa_sig);
+        EC_KEY_free(ec_key);
+        return false;
+    }
+
+    (*result) = ECDSA_do_verify(hash, SHA256_DIGEST_LENGTH, ecdsa_sig, ec_key);
+
+    ECDSA_SIG_free(ecdsa_sig);
+    EC_KEY_free(ec_key);
+
+    return true;
+}
+
+
 int main(int argc, char const *argv[]) {
     if (argc <= 1) {
         print_usage(argv);
@@ -76,6 +161,27 @@ int main(int argc, char const *argv[]) {
 
     printf("app: enclave started\n");
 
+    // Generate Ecc key pair within the SGX enclave
+    generate_ecc_key_pair(global_eid, &retval, &enclave_public_key, ENCLAVE_PUBLIC_KEY_SIZE);
+    if (retval != SGX_SUCCESS) {
+        printf("Failed to create RSA key pair. Error code: %d\n", retval);
+        exit(1);
+    }
+
+    uint8_t message[32];
+
+    message[0] = 'a';
+    Signature enclave_signature;
+
+    teste(global_eid, &retval, message, &enclave_signature, sizeof(message));
+
+    // this show if the signature is valid or not!
+    int result;
+
+    bool validation_result = validate_signature(&result, message, sizeof(message), enclave_signature);
+
+    printf("%s\n", validation_result ? "true" : "false");
+    printf("%d\n", result); // Use %d to print an integer value
     uint8_t key[KEY_SIZE];
     ecall_generate_key(global_eid, &retval, key, KEY_SIZE);
     if (retval != SGX_SUCCESS) {

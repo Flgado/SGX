@@ -1,12 +1,10 @@
 #include "Enclave_t.h"
 #include "sgx_trts.h"
 #include "sgx_tseal.h"
-
 #include "serializer.h"
 #include "encryption.h"
 
 sgx_ec256_private_t private_key;
-
 void _print_values(char *format, ...) {
     char buff[128];
     va_list args;
@@ -305,4 +303,59 @@ sgx_status_t ecall_validate_coords(
     free(aad);
 
     return retval; 
+}
+
+
+sgx_status_t teste(const unsigned char* msg, Signature *enclave_singature, size_t message_size)
+{
+    sgx_ecc_state_handle_t ecc_handle;
+
+    // Open ECC context
+    sgx_status_t status = sgx_ecc256_open_context(&ecc_handle);
+    // Sign "hello world" message
+    //const uint8_t message[] = "hello world";
+    sgx_ec256_signature_t signature;
+    status = sgx_ecdsa_sign(msg, message_size, &private_key, &signature, ecc_handle);
+    if (status != SGX_SUCCESS) {
+        _print_values("Failed to sign the message: %d\n", status);
+        sgx_ecc256_close_context(ecc_handle);
+        return status;
+    }
+
+    memcpy(enclave_singature->r, (uint8_t*)signature.x, 32);
+    memcpy(enclave_singature->s, (uint8_t*)signature.y, 32);
+    
+    // Close ECC context
+    status = sgx_ecc256_close_context(ecc_handle);
+}
+
+sgx_status_t generate_ecc_key_pair(PublicKey *public_key_to_parse, size_t size) {
+    
+    sgx_ec256_public_t public_key;
+    sgx_ecc_state_handle_t ecc_handle;
+
+    // Open ECC context
+    sgx_status_t status = sgx_ecc256_open_context(&ecc_handle);
+    if (status != SGX_SUCCESS) {
+        _print_values("Failed to open ECC context: %d\n", status);
+        return status;
+    }
+    // Generate ECC key pair
+    status = sgx_ecc256_create_key_pair(&private_key, &public_key, ecc_handle);
+    if (status != SGX_SUCCESS) {
+        _print_values("Failed to generate ECC key pair: %d\n", status);
+        sgx_ecc256_close_context(ecc_handle);
+        return status;
+    }
+
+    // Copy the contents of public_key.gx to gx
+    memcpy(public_key_to_parse->gx, public_key.gx, sizeof(public_key.gx));
+
+    // Copy the contents of public_key.gy to gy
+    memcpy(public_key_to_parse->gy, public_key.gy, sizeof(public_key.gy));
+
+    // Close ECC context
+    status = sgx_ecc256_close_context(ecc_handle);
+
+    return SGX_SUCCESS;
 }

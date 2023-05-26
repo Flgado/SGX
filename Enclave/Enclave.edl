@@ -6,6 +6,8 @@ enclave {
         public sgx_status_t ecall_validate_coords(uint32_t client_id, [in, count=num_coords] Coords* coords, size_t num_coords, [out] uint8_t *result, uint64_t timestamp);
         public sgx_status_t ecall_print_logs([in, size=enc_sz] uint8_t* enc_client_id, int enc_sz, [in, size=16] uint8_t *tag);
         public sgx_status_t ecall_generate_key([out, size=key_size] uint8_t* key, size_t key_size);
+        public sgx_status_t generate_ecc_key_pair([out, size=64] PublicKey* enclave_public_key, size_t key_size);
+        public sgx_status_t teste([in, size=msg_size] const unsigned char* msg, [out, size=64] Signature* enclave_signature, size_t msg_size);
     };
 
     untrusted {

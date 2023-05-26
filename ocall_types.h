@@ -7,4 +7,16 @@ typedef struct Coords {
     uint8_t val;
 } Coords;
 
+typedef struct PublicKey
+{
+    uint8_t gx[32];
+    uint8_t gy[32];
+} PublicKey; 
+
+typedef struct Signature
+{
+    uint8_t r[32];
+    uint8_t s[32];
+} Signature;
+
 #endif
