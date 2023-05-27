@@ -21,6 +21,13 @@
 #define MATRIX_CARD_SIZE 64
 #define KEY_SIZE 16
 #define TAG_SIZE 16
+#define ECDSA256_PUBLICKEY_GX_SIZE 32
+#define ECDSA256_PUBLICKEY_GY_SIZE 32
+#define ECDSA256_SIGNATURE_R_SIZE 32
+#define ECDSA256_SIGNATURE_S_SIZE 32
+#define ECDSA256
+
+ECDSA256PublicKey enclave_public_key;
 
 sgx_enclave_id_t global_eid = 0;
 sgx_enclave_id_t global_eid1 = 0;
@@ -31,6 +38,88 @@ void handle_validation_opt(char* client_id_str, char* coords, char* enclave_so);
 void handle_logs_opt(char* client_id_str, char* enclave_so);
 void handle_setup_card_opt(uint32_t client_id, char* enclave_so);
 void handle_card_versions_opt(uint32_t version);
+
+static bool validate_signature(int* result, const unsigned char* data, uint32_t data_len, ECDSA256Signature enclave_signature)
+{
+    EC_KEY* ec_key;
+    ECDSA_SIG* ecdsa_sig;
+
+    // Creat an EC_KEY object and set the public key
+    ec_key = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
+
+    if(!ec_key)
+    {
+        fprintf(stderr, "Failed at EC_KEY_new_curve_name().\n");
+        return false;
+    }
+
+    // Set the public key coordinates
+    BIGNUM* x = BN_lebin2bn(enclave_public_key.gx, ECDSA256_PUBLICKEY_GX_SIZE, NULL);
+    BIGNUM* y = BN_lebin2bn(enclave_public_key.gy, ECDSA256_PUBLICKEY_GY_SIZE, NULL);
+    if(EC_KEY_set_public_key_affine_coordinates(ec_key, x, y) <=0)
+    {
+        fprintf(stderr, "Failed to create ECDSA publicKey.\n");
+        BN_free(x);
+        BN_free(y);
+        return false;
+    }
+    BN_free(x);
+    BN_free(y);
+
+    // Create an ECDSA_SIG object and set the signature values
+    ecdsa_sig = ECDSA_SIG_new();
+    if(!ecdsa_sig)
+    {
+        fprintf(stderr, "Failed to create ECDSA sign.\n");
+        EC_KEY_free(ec_key);
+        return false;
+    }
+
+    // set the signature r value
+    BIGNUM* r = BN_lebin2bn(enclave_signature.r, ECDSA256_SIGNATURE_R_SIZE, NULL);
+    if(!r)
+    {
+        fprintf(stderr, "Failed to create signature r.\n");
+        ECDSA_SIG_free(ecdsa_sig);
+        EC_KEY_free(ec_key);
+        return false;
+    }
+
+    BIGNUM* s = BN_lebin2bn(enclave_signature.s, ECDSA256_SIGNATURE_S_SIZE, NULL);
+    if(!s)
+    {
+        fprintf(stderr, "Failed to create signature s.\n");
+        ECDSA_SIG_free(ecdsa_sig);
+        EC_KEY_free(ec_key);
+        return false;
+    }
+
+    // Assign r and s values for signature
+    if(ECDSA_SIG_set0(ecdsa_sig, r, s) == 0)
+    {
+        fprintf(stderr, "Failed at ECDSA_SIG_set0().\n");
+        ECDSA_SIG_free(ecdsa_sig);
+        EC_KEY_free(ec_key);
+        return false;
+    }
+
+    // Compute the SHA256 hash of the message
+    uint8_t hash[SHA256_DIGEST_LENGTH];
+    if(!SHA256(data, data_len, hash))
+    {
+        fprintf(stderr, "Failed to compute SH256 hash.\n");
+        ECDSA_SIG_free(ecdsa_sig);
+        EC_KEY_free(ec_key);
+        return false;
+    }
+
+    (*result) = ECDSA_do_verify(hash, SHA256_DIGEST_LENGTH, ecdsa_sig, ec_key);
+
+    ECDSA_SIG_free(ecdsa_sig);
+    EC_KEY_free(ec_key);
+
+    return true;
+}
 
 int encrypt_data(const char* plaintext, size_t plaintext_len, uint8_t* key, uint8_t* ciphertext, uint8_t* tag);
 int is_number(const char *str);
@@ -166,6 +255,12 @@ void handle_setup_card_opt(uint32_t client_id, char* enclave_so) {
 
     printf("[+] enclave started\n");
 
+    ecall_generate_ecc_key_pair(global_eid, &retval, &enclave_public_key, ECDSA256_PUBLICKEY_GX_SIZE+ECDSA256_PUBLICKEY_GY_SIZE);
+    if (retval != SGX_SUCCESS) {
+        printf("Failed to create Ecdsa256 key pair. Error code: %d\n", retval);
+        return;
+    }
+
     uint8_t key[KEY_SIZE];
     ecall_generate_key(global_eid, &retval, key, KEY_SIZE);
     if (retval != SGX_SUCCESS) {
@@ -178,12 +273,28 @@ void handle_setup_card_opt(uint32_t client_id, char* enclave_so) {
     }
 
     printf("\t[+] client card setup requested\n");
-
+    // ASSINAR
     // Generate random array
     uint8_t *array = (uint8_t *)malloc(MATRIX_CARD_SIZE * sizeof(uint8_t));
-    sgx_status_t status = ecall_setup_card(global_eid, &ret, client_id, array, MATRIX_CARD_SIZE);
+
+    struct ECDSA256Signature enclave_signature;
+
+    sgx_status_t status = ecall_setup_card(global_eid, &ret, client_id, array, &enclave_signature, ECDSA256_SIGNATURE_R_SIZE+ECDSA256_SIGNATURE_S_SIZE, MATRIX_CARD_SIZE);
     if (status != SGX_SUCCESS) {
         return;
+    }
+
+    int validation_result;
+    bool validatio_with_errors = validate_signature(&validation_result, array, MATRIX_CARD_SIZE * sizeof(uint8_t), enclave_signature);
+
+    if (!validatio_with_errors) {
+        printf("* Error in signature validation\n");
+        exit(1);
+    }
+ 
+    if (validation_result != 1) {
+        printf("* Signature invalide\n");
+        exit(1);
     }
 
     pretty_print_arr(array, MATRIX_CARD_SIZE, 8);
@@ -229,6 +340,12 @@ void handle_validation_opt(char* client_id_str, char* coords, char* enclave_so) 
         return;
     }
 
+    ecall_generate_ecc_key_pair(global_eid, &retval, &enclave_public_key, ECDSA256_PUBLICKEY_GX_SIZE+ECDSA256_PUBLICKEY_GY_SIZE);
+    if (retval != SGX_SUCCESS) {
+        printf("Failed to create Ecdsa256 key pair. Error code: %d\n", retval);
+        return;
+    }
+
     struct Coords *coords_arr = NULL;
     int num_records = parse_coords(coords, &coords_arr);
 
@@ -243,7 +360,22 @@ void handle_validation_opt(char* client_id_str, char* coords, char* enclave_so) 
 
     time_t timestamp = time(NULL);
 
-    int ret = ecall_validate_coords(global_eid, &retval, client_id, coords_arr, num_records, &result, (uint64_t)timestamp);
+    struct ECDSA256Signature enclave_signature;
+    int ret = ecall_validate_coords(global_eid, &retval, client_id, coords_arr, num_records, &result, (uint64_t)timestamp, &enclave_signature, ECDSA256_SIGNATURE_S_SIZE+ECDSA256_SIGNATURE_R_SIZE);
+
+    int validation_result;
+    uint8_t result_validation[1] = { result };
+    bool validatio_with_errors = validate_signature(&validation_result, result_validation, sizeof(result_validation), enclave_signature);
+
+    if (!validatio_with_errors) {
+        printf("* Error in signature validation\n");
+        exit(1);
+    }
+ 
+    if (validation_result != 1) {
+        printf("* Signature invalide\n");
+        exit(1);
+    }
 
     printf("\n[+] validation result %s\n", result == 1 ? "TRUE" : "FALSE");
 }

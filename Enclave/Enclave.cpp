@@ -9,6 +9,7 @@
 sgx_dh_session_t dh_session;
 sgx_key_128bit_t dh_key;
 sgx_dh_session_enclave_identity_t dh_identity;
+sgx_ec256_private_t enclave_private_key;
 
 sgx_status_t ecall_get_enclave_version(uint8_t *version) {
     *version = ENCLAVE_VERSION;
@@ -190,7 +191,29 @@ int ecall_encrypt_card(Card *card) {
     free(sealed_with_version);
 }
 
-int ecall_setup_card(uint32_t client_id, uint8_t *array, size_t array_size) {
+sgx_status_t sign(const unsigned char* msg, ECDSA256Signature *enclave_singature, size_t message_size)
+{
+    sgx_ecc_state_handle_t ecc_handle;
+
+    // Open ECC context
+    sgx_status_t status = sgx_ecc256_open_context(&ecc_handle);
+
+    sgx_ec256_signature_t signature;
+    status = sgx_ecdsa_sign(msg, message_size, &enclave_private_key, &signature, ecc_handle);
+    if (status != SGX_SUCCESS) {
+        printf("Failed to sign the message: %d\n", status);
+        sgx_ecc256_close_context(ecc_handle);
+        return status;
+    }
+
+    memcpy(enclave_singature->r, (uint8_t*)signature.x, 32);
+    memcpy(enclave_singature->s, (uint8_t*)signature.y, 32);
+
+    // Close ECC context
+    status = sgx_ecc256_close_context(ecc_handle);
+}
+
+int ecall_setup_card(uint32_t client_id, uint8_t *array, ECDSA256Signature* enclave_signature, size_t signature_size, size_t array_size) {
     sgx_status_t status;
 
     Card card;
@@ -207,9 +230,14 @@ int ecall_setup_card(uint32_t client_id, uint8_t *array, size_t array_size) {
         card.matrix_data[i] = value;
     }
 
+    status = sign(array, enclave_signature, array_size);
+    if (status != SGX_SUCCESS) {
+        printf("Failed to sign the message: %d\n", status);
+        return status;
+    }
+    
     int ret = ecall_encrypt_card(&card);
-
-    return SGX_SUCCESS; 
+    return ret;
 }
 
 sgx_status_t ecall_print_logs(uint8_t *enc_client_id, int enc_sz, uint8_t *tag) {
@@ -241,8 +269,11 @@ sgx_status_t ecall_validate_coords(
     Coords *coords, 
     size_t num_coords, 
     uint8_t *result, 
-    uint64_t timestamp) {
+    uint64_t timestamp,
+    ECDSA256Signature* enclave_signature,
+    size_t signature_size) {
     
+    sgx_status_t status;
     Card card;
     int card_fetch_result = get_card_from_client_id(client_id, &card);
     if (!card.log.empty()) {
@@ -264,6 +295,14 @@ sgx_status_t ecall_validate_coords(
 
     card.log.push_back({timestamp, *result});
     ecall_encrypt_card(&card);
+    
+    uint8_t result_validation[1] = { *result };
+
+    status = sign(result_validation, enclave_signature, sizeof(result_validation));
+    if (status != SGX_SUCCESS) {
+        printf("Failed to sign the message: %d\n", status);
+        return status;
+    }
 
     return SGX_SUCCESS; 
 }
@@ -392,6 +431,36 @@ sgx_status_t ecall_migration_finalize(uint8_t *encrypted, size_t encrypted_sz, u
     printf("card decrypted on enclave with version %d, for client %d\n", ENCLAVE_VERSION, card.client_id);
 
     int cardseal_result = ecall_encrypt_card(&card);
+}
+
+sgx_status_t ecall_generate_ecc_key_pair(ECDSA256PublicKey *public_key_to_parse, size_t ecc256_publicKey_size) {
+    sgx_ec256_public_t public_key;
+    sgx_ecc_state_handle_t ecc_handle;
+
+    // Open ECC context
+    sgx_status_t status = sgx_ecc256_open_context(&ecc_handle);
+    if (status != SGX_SUCCESS) {
+        printf("Failed to open ECC context: %d\n", status);
+        return status;
+    }
+    // Generate ECC key pair
+    status = sgx_ecc256_create_key_pair(&enclave_private_key, &public_key, ecc_handle);
+    if (status != SGX_SUCCESS) {
+        printf("Failed to generate ECC key pair");
+        sgx_ecc256_close_context(ecc_handle);
+        return status;
+    }
+
+    // Copy the contents of public_key.gx to gx
+    memcpy(public_key_to_parse->gx, public_key.gx, sizeof(public_key.gx));
+
+    // Copy the contents of public_key.gy to gy
+    memcpy(public_key_to_parse->gy, public_key.gy, sizeof(public_key.gy));
+
+    // Close ECC context
+    status = sgx_ecc256_close_context(ecc_handle);
+
+    return SGX_SUCCESS;
 }
 
 /*

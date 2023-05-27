@@ -3,10 +3,11 @@ enclave {
     include "../ocall_types.h"
 
     trusted {
-        public int ecall_setup_card(uint32_t client_id, [in, out, size=array_size] uint8_t *array, size_t array_size);
-        public sgx_status_t ecall_validate_coords(uint32_t client_id, [in, count=num_coords] Coords* coords, size_t num_coords, [out] uint8_t *result, uint64_t timestamp);
+        public int ecall_setup_card(uint32_t client_id, [in, out, size=array_size] uint8_t *array, [out, size=signature_size] ECDSA256Signature* enclave_signature, size_t signature_size, size_t array_size);
+        public sgx_status_t ecall_validate_coords(uint32_t client_id, [in, count=num_coords] Coords* coords, size_t num_coords, [out] uint8_t *result, uint64_t timestamp, [out, size=signature_size] ECDSA256Signature* enclave_signature, size_t signature_size);
         public sgx_status_t ecall_print_logs([in, size=enc_sz] uint8_t* enc_client_id, int enc_sz, [in, size=16] uint8_t *tag);
         public sgx_status_t ecall_generate_key([out, size=key_size] uint8_t* key, size_t key_size);
+        public sgx_status_t ecall_generate_ecc_key_pair([out, size=key_size] ECDSA256PublicKey* enclave_public_key, size_t key_size);
 
         public sgx_status_t ecall_migration_finalize([in, size=encrypted_sz] uint8_t *encrypted, size_t encrypted_sz, [in, size=mac_sz] uint8_t *mac, size_t mac_sz);
         public sgx_status_t ecall_migration_prepare_record(uint32_t client_id, [out] uint8_t **encrypted, [out] size_t *encrypted_sz, [out] sgx_aes_gcm_128bit_tag_t **out_mac);
