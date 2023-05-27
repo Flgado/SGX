@@ -8,13 +8,36 @@
 #include <string>
 #include "Enclave_u.h"
 
-void print_usage(char const *argv[]) {
-    printf("usage: %s [--setup <client_id> | --validate <client_id> <coords> | --logs <client_id>]\n", argv[0]);
-    printf("\n--setup:         <client_id> sets up a new client matrix card for a given client identifier");
-    printf("\n--logs:          <client_id> shows the access logs for the client's card");
-    printf("\n--card-versions: <version> shows the cards for a specific version");
-    printf("\n--validate:      <client_id> <coords> validates coords against the client's matrix card\n");
-    printf("             * coords should be of type: a0=1,a2=10,a3=20\n");
+void print_usage(char *argv[]) {
+    printf("Usage: %s [OPTION]\n\n", argv[0]);
+    printf("Authors:\n");
+    printf(" Marcos Caramalho\n");
+    printf(" João Folgado\n\n");
+    printf("Options:\n");
+    printf(" --help                           Show this help screen\n");
+    printf(" --setup <client_id>              Sets up a new card for provided <client_id>\n");
+    printf(" --validate <client_id> <coords>  Validates provided coordinates for client card\n");
+    printf(" --migrate <src> <dst>            Migrate cards from source enclave version to destination\n");
+    printf(" --card-versions <version>        Get a list of cards for a specific enclave version\n");
+    printf(" --logs <client_id>               Prints logs for client matrix card accesses\n");
+    printf(" --binary <binary>                Use specific binary\n");
+
+    printf(" * By default, the enclave used is found in enclave.signed.so\n");
+    printf(" * If needed, we can use the --binary option to specify a different one\n");
+
+    printf("\nExamples:\n");
+    printf(" Setup a new client card, for client identifier 1\n");
+    printf("   %s --setup 1\n", argv[0]);
+    printf(" Validate coordinate values (a, 0) = 10, (b, 0) = 20 for client 1\n");
+    printf("   %s --validate 1 a0=10,b0=20\n", argv[0]);
+    printf(" Print access logs for client 1\n");
+    printf("   %s --logs 1\n", argv[0]);
+    printf(" Show existing cards for enclave with version 2\n");
+    printf("   %s --card-versions 2\n", argv[0]);
+    printf(" Migrate cards from enclave src into enclave dst's version\n");
+    printf("   %s --migrate src.signed.so dst.signed.so\n", argv[0]);
+    printf(" Run --logs, --setup, --validate with specific enclave's binary\n");
+    printf("   %s [...] --binary your.enclave.binary.so\n", argv[0]);
 }
 
 void pretty_print_arr(const uint8_t *data, size_t size, size_t max_per_line) {
