@@ -8,7 +8,7 @@
 #include <string>
 #include "Enclave_u.h"
 
-void print_usage(char const *argv[]) {
+void print_usage(char *argv[]) {
     printf("Usage: %s [OPTION]\n\n", argv[0]);
     printf("Authors:\n");
     printf(" Marcos Caramalho\n");
