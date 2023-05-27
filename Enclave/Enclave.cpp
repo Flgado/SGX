@@ -159,6 +159,7 @@ int ecall_encrypt_card(Card *card) {
 
     uint8_t *sealed_data = NULL;
     size_t sealed_data_size = 0;
+
     sgx_status_t status = seal(
         serialized.data(), 
         serialized.size(), 
