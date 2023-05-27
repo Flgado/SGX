@@ -5,7 +5,7 @@
 
 struct Card {
     int64_t client_id;
-    uint8_t matrix_data[64];
+    uint16_t matrix_data[64];
     std::vector<std::pair<uint64_t, bool>> log;
 };
 

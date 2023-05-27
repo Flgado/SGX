@@ -84,7 +84,7 @@ else
 endif
 Crypto_Library_Name := sgx_tcrypto
 
-Enclave_Cpp_Files := Enclave/Enclave.cpp Enclave/serializer.cpp Enclave/encryption.cpp
+Enclave_Cpp_Files := Enclave/Enclave.cpp Enclave/serializer.cpp Enclave/encryption.cpp Enclave/sign.cpp Enclave/utils.cpp
 Enclave_Include_Paths := -IEnclave -I$(SGX_SDK)/include -I$(SGX_SDK)/include/tlibc -I$(SGX_SDK)/include/stlport -I$(SGX_SDK)/include/libcxx
 
 Enclave_C_Flags := $(SGX_COMMON_CFLAGS) -nostdinc -fvisibility=hidden -fpie -ffunction-sections -fdata-sections -fstack-protector-strong -w
@@ -100,7 +100,7 @@ Enclave_Link_Flags := $(SGX_COMMON_CFLAGS) -Wl,--no-undefined -nostdlib -nodefau
 	
 ## -Wl,--version-script=Enclave/Enclave.lds
 
-Enclave_Cpp_Objects := Enclave/Enclave.o Enclave/serializer.o Enclave/encryption.o
+Enclave_Cpp_Objects := Enclave/obj/Enclave.o Enclave/obj/serializer.o Enclave/obj/encryption.o Enclave/obj/sign.o Enclave/obj/utils.o
 
 Enclave_Name := enclave.so
 Signed_Enclave_Name := enclave.signed.so
@@ -189,23 +189,31 @@ Enclave/Enclave_t.c: $(SGX_EDGER8R) Enclave/Enclave.edl
 	@cd Enclave && $(SGX_EDGER8R) --trusted ../Enclave/Enclave.edl --search-path ../Enclave --search-path $(SGX_SDK)/include
 	@echo "GEN  =>  $@"
 
-Enclave/Enclave_t.o: Enclave/Enclave_t.c
+Enclave/obj/Enclave_t.o: Enclave/Enclave_t.c
 	@$(CC) $(Enclave_C_Flags) -c $< -o $@
 	@echo "CC   <=  $<"
 
-Enclave/Enclave.o: Enclave/Enclave.cpp
+Enclave/obj/Enclave.o: Enclave/Enclave.cpp
 	$(CXX) $(Enclave_Cpp_Flags) -c $< -o $@
 	@echo "CXX  <=  $<"
 
-Enclave/serializer.o: Enclave/serializer.cpp
+Enclave/obj/serializer.o: Enclave/serializer.cpp
 	$(CXX) $(Enclave_Cpp_Flags) -c $< -o $@
 	@echo "CXX  <=  $<"
 
-Enclave/encryption.o: Enclave/encryption.cpp
+Enclave/obj/encryption.o: Enclave/encryption.cpp
 	$(CXX) $(Enclave_Cpp_Flags) -c $< -o $@
 	@echo "CXX  <=  $<"
 
-$(Enclave_Name): Enclave/Enclave_t.o $(Enclave_Cpp_Objects)
+Enclave/obj/sign.o: Enclave/sign.cpp
+	$(CXX) $(Enclave_Cpp_Flags) -c $< -o $@
+	@echo "CXX  <=  $<"
+
+Enclave/obj/utils.o: Enclave/utils.cpp
+	$(CXX) $(Enclave_Cpp_Flags) -c $< -o $@
+	@echo "CXX  <=  $<"
+
+$(Enclave_Name): Enclave/obj/Enclave_t.o $(Enclave_Cpp_Objects)
 	@$(CXX) $^ -o $@ $(Enclave_Link_Flags)
 	@echo "LINK =>  $@"
 

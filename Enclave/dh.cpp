@@ -2,7 +2,7 @@
 #include "sgx_trts.h"
 #include "sgx_tseal.h"
 #include "sgx_dh.h"
-#include "dh.h"
+#include "headers/dh.h"
 
 sgx_key_128bit_t dh_key;
 sgx_dh_session_t dh_session;

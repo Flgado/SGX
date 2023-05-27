@@ -21,16 +21,25 @@
 #define MATRIX_CARD_SIZE 64
 #define KEY_SIZE 16
 #define TAG_SIZE 16
+#define ECDSA256_PUBLICKEY_GX_SIZE 32
+#define ECDSA256_PUBLICKEY_GY_SIZE 32
+#define ECDSA256_SIGNATURE_R_SIZE 32
+#define ECDSA256_SIGNATURE_S_SIZE 32
+#define SIGNATURE_SIZE ECDSA256_PUBLICKEY_GX_SIZE + ECDSA256_PUBLICKEY_GY_SIZE
+
+ECDSA256PublicKey enclave_public_key;
 
 sgx_enclave_id_t global_eid = 0;
 sgx_enclave_id_t global_eid1 = 0;
 sgx_enclave_id_t global_eid2 = 0;
 
+static bool validate_signature(int* result, const unsigned char* data, uint32_t data_len, ECDSA256Signature enclave_signature);
 void handle_migration_opt(char *source_enclave_so, char *dest_enclave_so);
 void handle_validation_opt(char* client_id_str, char* coords, char* enclave_so);
 void handle_logs_opt(char* client_id_str, char* enclave_so);
-void handle_setup_card_opt(uint32_t client_id, char* enclave_so);
+void handle_setup_card_opt(char *client_id, char* enclave_so);
 void handle_card_versions_opt(uint32_t version);
+void init_comm_keys(uint8_t *key);
 
 int encrypt_data(const char* plaintext, size_t plaintext_len, uint8_t* key, uint8_t* ciphertext, uint8_t* tag);
 int is_number(const char *str);
@@ -65,9 +74,7 @@ int main(int argc, char *argv[]) {
                 handle_card_versions_opt(version);
                 break;
             case 's':
-                uint32_t client_id;
-                sscanf(optarg, "%d", &client_id);
-                handle_setup_card_opt(client_id, enclave_so);
+                handle_setup_card_opt(optarg, enclave_so);
                 break;
             case 'l':
                 handle_logs_opt(optarg, enclave_so);
@@ -154,7 +161,33 @@ void handle_card_versions_opt(uint32_t version) {
     printf("\n");
 }
 
-void handle_setup_card_opt(uint32_t client_id, char* enclave_so) {
+void handle_signature_validation(char *label, ECDSA256Signature signature, uint8_t *data, size_t size) {
+    int validation_result;
+
+    uint8_t *sign_arr = (uint8_t *)malloc(size);
+    memcpy(sign_arr, (uint8_t*)data, size);
+
+    bool validatio_with_errors = validate_signature(
+        &validation_result, 
+        sign_arr, 
+        size, 
+        signature
+    );
+
+    if (!validatio_with_errors) {
+        printf("* Error in signature validation\n");
+        exit(1);
+    }
+
+    if (validation_result != 1) {
+        printf("* Signature invalid\n");
+        exit(1);
+    }
+
+    printf("\033[0;32m:: %s signature pass!\n\033[0m", label);
+}
+
+void handle_setup_card_opt(char* client_id, char* enclave_so) {
     int ret;
     sgx_status_t retval;
 
@@ -166,27 +199,75 @@ void handle_setup_card_opt(uint32_t client_id, char* enclave_so) {
 
     printf("[+] enclave started\n");
 
-    uint8_t key[KEY_SIZE];
-    ecall_generate_key(global_eid, &retval, key, KEY_SIZE);
-    if (retval != SGX_SUCCESS) {
-        printf("* failed to generate key\n");
-    }
+    // client_id encryption
+    size_t plaintext_len = strlen(client_id);
+    uint8_t *ciphertext = (uint8_t*) malloc(plaintext_len);
+    uint8_t *tag = (uint8_t*) malloc(TAG_SIZE);
 
-    if (retval != SGX_SUCCESS) {
-        printf("* failed to create key in enclave\n");
-        return;
-    }
+    uint8_t *shared_key = (uint8_t*) malloc(KEY_SIZE);
+    init_comm_keys(shared_key);
+
+    int len = encrypt_data(client_id, plaintext_len, shared_key, ciphertext, tag);
+
+    free(shared_key);
+
+    struct EncryptedParam client_param;
+    client_param.ciphertext = ciphertext;
+    client_param.cipher_size = len;
+
+    client_param.tag = tag;
+    client_param.tag_size = TAG_SIZE;
 
     printf("\t[+] client card setup requested\n");
 
     // Generate random array
-    uint8_t *array = (uint8_t *)malloc(MATRIX_CARD_SIZE * sizeof(uint8_t));
-    sgx_status_t status = ecall_setup_card(global_eid, &ret, client_id, array, MATRIX_CARD_SIZE);
+    uint16_t *array = (uint16_t *)malloc(MATRIX_CARD_SIZE * sizeof(uint16_t));
+    struct ECDSA256Signature enclave_signature;
+    sgx_status_t status = ecall_setup_card(
+        global_eid, 
+        &ret, 
+        &client_param,
+        sizeof(client_param),
+        array, 
+        &enclave_signature, 
+        ECDSA256_SIGNATURE_R_SIZE + ECDSA256_SIGNATURE_S_SIZE, 
+        MATRIX_CARD_SIZE  * sizeof(uint16_t)
+    );
     if (status != SGX_SUCCESS) {
+        printf("Failed to setup card\n");
         return;
     }
 
-    pretty_print_arr(array, MATRIX_CARD_SIZE, 8);
+    size_t array_size = MATRIX_CARD_SIZE * sizeof(uint16_t);
+    uint8_t *sign_arr = (uint8_t *)malloc(array_size);
+    memcpy(sign_arr, (uint8_t*)array, array_size);
+    handle_signature_validation("matrix data", enclave_signature, sign_arr, array_size);
+
+    FILE *fp;
+    char file_name[20];
+    sprintf(file_name, "cards/%s.txt", client_id);
+
+    fp = fopen(file_name, "w");
+    if (fp == NULL) {
+        printf("Could not open file %s for writing\n", file_name);
+        return;
+    }
+
+    fprintf(fp, "    0   1   2   3   4   5   6   7\n");
+    printf("\n\t    0   1   2   3   4   5   6   7\n");
+
+    for (int i = 0; i < 8; i++) {
+        printf("\t%c ", 'A' + i);
+        fprintf(fp, "%c ", 'A' + i);
+        for (int j = 0; j < 8; j++) {
+            printf(" %3d", array[i * 8 + j]);
+            fprintf(fp, " %3d", array[i * 8 + j]);
+        }
+        printf("\n");
+        fprintf(fp, "\n");
+    }
+    printf("\n");
+    fclose(fp);
 }
 
 void handle_logs_opt(char* client_id_str, char* enclave_so) {
@@ -201,24 +282,51 @@ void handle_logs_opt(char* client_id_str, char* enclave_so) {
 
     // client_id encryption
     size_t plaintext_len = strlen(client_id_str);
-    uint8_t* ciphertext = (uint8_t*) malloc(plaintext_len);
-    uint8_t* tag = (uint8_t*) malloc(TAG_SIZE);
+    uint8_t *ciphertext = (uint8_t*) malloc(plaintext_len);
+    uint8_t *tag = (uint8_t*) malloc(TAG_SIZE);
 
-    uint8_t key[KEY_SIZE];
-    ecall_generate_key(global_eid, &retval, key, KEY_SIZE);
-    if (retval != SGX_SUCCESS) {
-        printf("* failed to generate key\n");
-    }
+    uint8_t *shared_key = (uint8_t*) malloc(KEY_SIZE);
+    init_comm_keys(shared_key);
 
-    if (retval != SGX_SUCCESS) {
-        printf("* failed to create key in enclave\n");
-        return;
-    }
+    int len = encrypt_data(client_id_str, plaintext_len, shared_key, ciphertext, tag);
 
-    int len = encrypt_data(client_id_str, plaintext_len, key, ciphertext, tag);
+    free(shared_key);
+
+    struct EncryptedParam client_param;
+    client_param.ciphertext = ciphertext;
+    client_param.cipher_size = len;
+
+    client_param.tag = tag;
+    client_param.tag_size = TAG_SIZE;
 
     // call ecall_print_logs with encrypted client_id
-    ecall_print_logs(global_eid, &retval, ciphertext, len, tag);
+    ecall_print_logs(global_eid, &retval, &client_param, sizeof(client_param));
+}
+
+void coords_to_byte_arr(char *result, Coords *coords_arr, size_t num_records) {
+    for (int i = 0; i < num_records; i++) {
+        result[i * 4] = coords_arr[i].x;
+        result[i * 4 + 1] = coords_arr[i].y;
+        result[i * 4 + 2] = coords_arr[i].pos;
+        result[i * 4 + 3] = coords_arr[i].val;
+    }
+}
+
+EncryptedParam get_encrypted_param(char *plaintext, size_t plaintext_len, uint8_t* key) {
+    EncryptedParam encrypted_param;
+
+    uint8_t *ciphertext = (uint8_t*) malloc(plaintext_len);
+    uint8_t *tag = (uint8_t*) malloc(TAG_SIZE);
+
+    int len = encrypt_data(plaintext, plaintext_len, key, ciphertext, tag);
+
+    encrypted_param.ciphertext = ciphertext;
+    encrypted_param.cipher_size = len;
+
+    encrypted_param.tag = tag;
+    encrypted_param.tag_size = TAG_SIZE;
+
+    return encrypted_param;
 }
 
 void handle_validation_opt(char* client_id_str, char* coords, char* enclave_so) {
@@ -229,21 +337,62 @@ void handle_validation_opt(char* client_id_str, char* coords, char* enclave_so) 
         return;
     }
 
-    struct Coords *coords_arr = NULL;
-    int num_records = parse_coords(coords, &coords_arr);
-
-    printf("\t[-] validating coords for client %s:\n", client_id_str);
-    for (int i = 0; i < num_records; i++) {
-        printf("\t (x=%hhu, y=%hhu) = %hhu\n", coords_arr[i].x, coords_arr[i].y, coords_arr[i].val);
+    ecall_generate_ecc_key_pair(global_eid, &retval, &enclave_public_key, SIGNATURE_SIZE);
+    if (retval != SGX_SUCCESS) {
+        printf("Failed to create Ecdsa256 key pair. Error code: %d\n", retval);
+        return;
     }
 
-    uint8_t result = 0;
-    uint32_t client_id;
-    sscanf(client_id_str, "%d", &client_id);
+    struct Coords *coords_list = NULL;
+    int num_records = parse_coords(coords, &coords_list);
+
+    printf("\tvalidating coords for client %s:\n", client_id_str);
+    for (int i = 0; i < num_records; i++) {
+        printf("\t- (%hhu, %hhu, %hhu) = %hhu\n", coords_list[i].x, coords_list[i].y, coords_list[i].pos, coords_list[i].val);
+    }
+
+    uint8_t *shared_key = (uint8_t*) malloc(KEY_SIZE);
+    init_comm_keys(shared_key);
+
+    size_t coords_param_size = sizeof(Coords) * num_records;
+    char *coords_arr = (char*) malloc(coords_param_size);
+    coords_to_byte_arr(coords_arr, coords_list, num_records);
+
+    EncryptedParam coords_param = get_encrypted_param(coords_arr, coords_param_size, shared_key);
+    EncryptedParam client_param = get_encrypted_param(client_id_str, strlen(client_id_str), shared_key);
+
+    free(shared_key);
 
     time_t timestamp = time(NULL);
 
-    int ret = ecall_validate_coords(global_eid, &retval, client_id, coords_arr, num_records, &result, (uint64_t)timestamp);
+    struct ECDSA256Signature enclave_signature;
+    uint8_t result = 0;
+    int ret = ecall_validate_coords(
+        global_eid, 
+        &retval, 
+        &client_param,
+        sizeof(client_param),
+        &coords_param, 
+        sizeof(coords_param),
+        &result,
+        (uint64_t)timestamp,
+        &enclave_signature, 
+        ECDSA256_SIGNATURE_S_SIZE + ECDSA256_SIGNATURE_R_SIZE
+    );
+
+    int validation_result;
+    uint8_t result_validation[1] = { result };
+    bool validatio_with_errors = validate_signature(&validation_result, result_validation, sizeof(result_validation), enclave_signature);
+
+    if (!validatio_with_errors) {
+        printf("* Error in signature validation\n");
+        exit(1);
+    }
+
+    if (validation_result != 1) {
+        printf("* Signature invalide\n");
+        exit(1);
+    }
 
     printf("\n[+] validation result %s\n", result == 1 ? "TRUE" : "FALSE");
 }
@@ -326,7 +475,7 @@ void handle_migration_opt(char *source_enclave_so, char *dest_enclave_so) {
 
         uint8_t *encrypted = NULL;
         size_t size = 0;
-        sgx_aes_gcm_128bit_tag_t *out_tag = NULL;
+        sgx_aes_gcm_128bit_tag_t *out_tag = (sgx_aes_gcm_128bit_tag_t*) malloc(sizeof(sgx_aes_gcm_128bit_tag_t));
         ret = ecall_migration_prepare_record(global_eid1, &retval, client_id, &encrypted, &size, &out_tag);
         if (ret != SGX_SUCCESS) {
             print_error_message((ret != SGX_SUCCESS) ? ret : dh_status, "ecall_migration_prepare_record");
@@ -389,4 +538,91 @@ int encrypt_data(const char* plaintext, size_t plaintext_len, uint8_t* key, uint
     EVP_CIPHER_CTX_free(ctx);
 
     return ciphertext_len;
+}
+
+static bool validate_signature(int* result, const unsigned char* data, uint32_t data_len, ECDSA256Signature enclave_signature) {
+    EC_KEY* ec_key;
+    ECDSA_SIG* ecdsa_sig;
+
+    ec_key = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
+
+    if(!ec_key) {
+        fprintf(stderr, "Failed at EC_KEY_new_curve_name().\n");
+        return false;
+    }
+
+    BIGNUM* x = BN_lebin2bn(enclave_public_key.gx, ECDSA256_PUBLICKEY_GX_SIZE, NULL);
+    BIGNUM* y = BN_lebin2bn(enclave_public_key.gy, ECDSA256_PUBLICKEY_GY_SIZE, NULL);
+    if(EC_KEY_set_public_key_affine_coordinates(ec_key, x, y) <=0) {
+        fprintf(stderr, "Failed to create ECDSA publicKey.\n");
+        BN_free(x);
+        BN_free(y);
+        return false;
+    }
+    BN_free(x);
+    BN_free(y);
+
+    ecdsa_sig = ECDSA_SIG_new();
+    if(!ecdsa_sig) {
+        fprintf(stderr, "Failed to create ECDSA sign.\n");
+        EC_KEY_free(ec_key);
+        return false;
+    }
+
+    BIGNUM* r = BN_lebin2bn(enclave_signature.r, ECDSA256_SIGNATURE_R_SIZE, NULL);
+    if(!r) {
+        fprintf(stderr, "Failed to create signature r.\n");
+        ECDSA_SIG_free(ecdsa_sig);
+        EC_KEY_free(ec_key);
+        return false;
+    }
+
+    BIGNUM* s = BN_lebin2bn(enclave_signature.s, ECDSA256_SIGNATURE_S_SIZE, NULL);
+    if(!s) {
+        fprintf(stderr, "Failed to create signature s.\n");
+        ECDSA_SIG_free(ecdsa_sig);
+        EC_KEY_free(ec_key);
+        return false;
+    }
+
+    if(ECDSA_SIG_set0(ecdsa_sig, r, s) == 0) {
+        fprintf(stderr, "Failed at ECDSA_SIG_set0().\n");
+        ECDSA_SIG_free(ecdsa_sig);
+        EC_KEY_free(ec_key);
+        return false;
+    }
+
+    uint8_t hash[SHA256_DIGEST_LENGTH];
+    if(!SHA256(data, data_len, hash)) {
+        fprintf(stderr, "Failed to compute SH256 hash.\n");
+        ECDSA_SIG_free(ecdsa_sig);
+        EC_KEY_free(ec_key);
+        return false;
+    }
+
+    (*result) = ECDSA_do_verify(hash, SHA256_DIGEST_LENGTH, ecdsa_sig, ec_key);
+
+    ECDSA_SIG_free(ecdsa_sig);
+    EC_KEY_free(ec_key);
+
+    return true;
+}
+
+void init_comm_keys(uint8_t *key) {
+    sgx_status_t retval;
+
+    ecall_generate_ecc_key_pair(global_eid, &retval, &enclave_public_key, SIGNATURE_SIZE);
+    if (retval != SGX_SUCCESS) {
+        printf("Failed to create ECDSA256 key pair. Error code: %d\n", retval);
+        return;
+    }
+
+    struct ECDSA256Signature enclave_signature;
+    ecall_generate_key(global_eid, &retval, key, KEY_SIZE, &enclave_signature, SIGNATURE_SIZE);
+    if (retval != SGX_SUCCESS) {
+        printf("* failed to generate key\n");
+        exit(1);
+    }
+
+    handle_signature_validation("symmetric key", enclave_signature, key, KEY_SIZE);
 }
