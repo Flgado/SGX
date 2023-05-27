@@ -90,7 +90,7 @@ int ecall_encrypt_card(Card *card);
 /*
  * Sets up a new card, given a client identifier and outputs its array once to stdout
 */
-int ecall_setup_card(uint32_t client_id, uint8_t *array, size_t array_size);
+int ecall_setup_card(uint32_t client_id, uint16_t *array, size_t array_size);
 
 /*
  * Given an encrypted client_id, unseals its card and prints the access logs

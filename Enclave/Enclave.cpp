@@ -188,23 +188,28 @@ int ecall_encrypt_card(Card *card) {
 
     free(sealed_data);
     free(sealed_with_version);
+
+    return 0;
 }
 
-int ecall_setup_card(uint32_t client_id, uint8_t *array, size_t array_size) {
+int ecall_setup_card(uint32_t client_id, uint16_t *array, size_t array_size) {
     sgx_status_t status;
 
     Card card;
     card.client_id = client_id;
 
-    for (int i = 0; i < array_size; i++) {
-        uint8_t value;
-        status = sgx_read_rand(&value, sizeof(value));
+    for (int i = 0; i < 64; i++) {
+        uint8_t value[2];
+        status = sgx_read_rand(value, sizeof(value));
         if (status != SGX_SUCCESS) {
             ocall_print("error generating random number\n");
             return status;
         }
-        array[i] = value;
-        card.matrix_data[i] = value;
+        
+        uint16_t composed = ((uint16_t) value[0] << 8 | value[1]) % 900;
+        composed += 100;
+        array[i] = composed;
+        card.matrix_data[i] = composed;
     }
 
     int ret = ecall_encrypt_card(&card);
@@ -257,7 +262,19 @@ sgx_status_t ecall_validate_coords(
     *result = 1;
     for (size_t i = 0; i < num_coords; i++) {
         int idx = coords[i].y * 8 + coords[i].x;
-        if (card.matrix_data[idx] != coords[i].val) {
+        int digit_to_check = card.matrix_data[idx];
+        if (coords[i].pos == 1) {
+            digit_to_check = digit_to_check / 100;
+        }
+        else if (coords[i].pos == 2) {
+            digit_to_check = (digit_to_check / 10) % 10;
+        }
+        else if (coords[i].pos == 3) {
+            digit_to_check = digit_to_check % 10;
+        }
+
+        printf("Checking for digit %d\n", digit_to_check);
+        if (digit_to_check != coords[i].val) {
             *result = 0;
         }
     }

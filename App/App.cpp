@@ -180,13 +180,38 @@ void handle_setup_card_opt(uint32_t client_id, char* enclave_so) {
     printf("\t[+] client card setup requested\n");
 
     // Generate random array
-    uint8_t *array = (uint8_t *)malloc(MATRIX_CARD_SIZE * sizeof(uint8_t));
-    sgx_status_t status = ecall_setup_card(global_eid, &ret, client_id, array, MATRIX_CARD_SIZE);
+    uint16_t *array = (uint16_t *)malloc(MATRIX_CARD_SIZE * sizeof(uint16_t));
+    sgx_status_t status = ecall_setup_card(global_eid, &ret, client_id, array, MATRIX_CARD_SIZE * sizeof(uint16_t));
     if (status != SGX_SUCCESS) {
+        printf("Failed to setup card\n");
         return;
     }
 
-    pretty_print_arr(array, MATRIX_CARD_SIZE, 8);
+    FILE *fp;
+    char file_name[20];
+    sprintf(file_name, "cards/%d.txt", client_id);
+
+    fp = fopen(file_name, "w");
+    if (fp == NULL) {
+        printf("Could not open file %s for writing\n", file_name);
+        return;
+    }
+
+    fprintf(fp, "    0   1   2   3   4   5   6   7\n");
+    printf("\n\t    0   1   2   3   4   5   6   7\n");
+
+    for (int i = 0; i < 8; i++) {
+        printf("\t%c ", 'A' + i);
+        fprintf(fp, "%c ", 'A' + i);
+        for (int j = 0; j < 8; j++) {
+            printf(" %3d", array[i * 8 + j]);
+            fprintf(fp, " %3d", array[i * 8 + j]);
+        }
+        printf("\n");
+        fprintf(fp, "\n");
+    }
+    printf("\n");
+    fclose(fp);
 }
 
 void handle_logs_opt(char* client_id_str, char* enclave_so) {
@@ -232,9 +257,9 @@ void handle_validation_opt(char* client_id_str, char* coords, char* enclave_so) 
     struct Coords *coords_arr = NULL;
     int num_records = parse_coords(coords, &coords_arr);
 
-    printf("\t[-] validating coords for client %s:\n", client_id_str);
+    printf("\tvalidating coords for client %s:\n", client_id_str);
     for (int i = 0; i < num_records; i++) {
-        printf("\t (x=%hhu, y=%hhu) = %hhu\n", coords_arr[i].x, coords_arr[i].y, coords_arr[i].val);
+        printf("\t- (%hhu, %hhu, %hhu) = %hhu\n", coords_arr[i].x, coords_arr[i].y, coords_arr[i].pos, coords_arr[i].val);
     }
 
     uint8_t result = 0;

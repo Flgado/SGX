@@ -7,7 +7,8 @@
 #include <stdint.h>
 
 void ocall_print(const char *str) {
-    printf("  ENCLAVE: %s", str);
+    //printf("  ENCLAVE: %s", str);
+    printf("%s", str);
 }
 
 int ocall_write_sealed_data(uint32_t client_id, uint8_t *sealed_data, size_t sealed_data_size) {
