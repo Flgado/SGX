@@ -3,7 +3,7 @@
 #include "sgx_trts.h"
 #include "sgx_tseal.h"
 
-#include "serializer.h"
+#include "headers/serializer.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -13,10 +13,18 @@
 #include <utility>
 #include <cstdint>
 #include <cstring>
-#include "encryption.h"
+#include "headers/encryption.h"
+#include "headers/utils.h"
+
+#include "headers/sign.h"
 
 uint8_t enclave_key[KEY_SIZE];
-sgx_status_t ecall_generate_key(uint8_t* key, size_t key_size) {
+sgx_status_t ecall_generate_key(
+    uint8_t* key, 
+    size_t key_size, 
+    ECDSA256Signature* enclave_signature, 
+    size_t signature_size) {
+
     if (key_size != KEY_SIZE) {
         return SGX_ERROR_INVALID_PARAMETER;
     }
@@ -24,6 +32,16 @@ sgx_status_t ecall_generate_key(uint8_t* key, size_t key_size) {
     sgx_read_rand(key, key_size);
     for(int i = 0; i < KEY_SIZE; i++) {
         enclave_key[i] = key[i];
+    }
+    uint8_t *sign_arr = (uint8_t *)malloc(key_size);
+    memcpy(sign_arr, (uint8_t*)key, key_size);
+
+
+    sgx_status_t status = sign(sign_arr, enclave_signature, key_size);
+    if (status != SGX_SUCCESS) {
+        printf("Failed to sign the message: %d\n", status);
+
+        return status;
     }
 
     return SGX_SUCCESS;
@@ -49,14 +67,6 @@ sgx_status_t decrypt_data(uint8_t* ciphertext, size_t ciphertext_size, uint8_t* 
     return status;
 }
 
-void printf(char *format, ...) {
-    char buff[128];
-    va_list args;
-    va_start(args, format);
-    vsnprintf(buff, sizeof(buff), format, args);
-    va_end(args);
-    ocall_print(buff);
-}
 
 sgx_status_t encrypt_data(
     const sgx_key_128bit_t* key,

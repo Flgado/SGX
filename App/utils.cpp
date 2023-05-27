@@ -73,7 +73,7 @@ int parse_coords(char const *input, struct Coords **coords_arr) {
 
     int index = 0;
     ptr = input;
-    while (sscanf(ptr, "%c%hhu,%hhu=%hhu", &((*coords_arr)[index].y), &((*coords_arr)[index].x), &((*coords_arr)[index].pos), &((*coords_arr)[index].val)) == 4) {
+    while (sscanf(ptr, "%c%hhu:%hhu=%hhu", &((*coords_arr)[index].y), &((*coords_arr)[index].x), &((*coords_arr)[index].pos), &((*coords_arr)[index].val)) == 4) {
         (*coords_arr)[index].y = toupper((*coords_arr)[index].y) - 'A';
 
         ptr = strchr(ptr, ',');

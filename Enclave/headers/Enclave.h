@@ -5,6 +5,7 @@
 #include "sgx_trts.h"
 #include "sgx_tseal.h"
 #include "sgx_dh.h"
+#include "sign.h"
 
 //#include "serializer.h"
 //#include "encryption.h"
@@ -13,7 +14,7 @@
  * Enclave's version. This variable should be updated in every version
  * of the enclave, in increments of 1
 */
-#define ENCLAVE_VERSION 2
+#define ENCLAVE_VERSION 3
 
 /*
  * Policy for the sealing key. If we use MRENCLAVE, subsequent versions
@@ -90,21 +91,22 @@ int ecall_encrypt_card(Card *card);
 /*
  * Sets up a new card, given a client identifier and outputs its array once to stdout
 */
-int ecall_setup_card(uint32_t client_id, uint16_t *array, size_t array_size);
+int ecall_setup_card(EncryptedParam *client_param, size_t client_param_size, uint16_t *array, size_t array_size);
 
 /*
  * Given an encrypted client_id, unseals its card and prints the access logs
 */
-sgx_status_t ecall_print_logs(uint8_t *enc_client_id, int enc_sz, uint8_t *tag);
+sgx_status_t ecall_print_logs(EncryptedParam *client_param, size_t client_param_size);
 
 /*
  * Given a set of coordinates for a specific client, validates them against the 
  * matrix card 
 */
 sgx_status_t ecall_validate_coords(
-    uint32_t client_id, 
-    Coords *coords, 
-    size_t num_coords, 
+    EncryptedParam *client_param, 
+    size_t client_param_size,
+    EncryptedParam *coords_param, 
+    size_t coords_param_size,
     uint8_t *result, 
     uint64_t timestamp
 );
