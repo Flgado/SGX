@@ -49,7 +49,6 @@ int main(int argc, char *argv[]) {
 
     int idx = 0;
 
-    // checks if there's a force enclave binary to use
     char *enclave_so = "enclave.signed.so";
     while ((opt = getopt_long(argc, argv, "hs:m:c:l:v:b:", options, &idx)) != -1) {
         switch(opt) {
@@ -198,8 +197,6 @@ void handle_logs_opt(char* client_id_str, char* enclave_so) {
     }
 
     printf("[+] enclave started\n");
-    //uint32_t client_id;
-    //sscanf(client_id_str, "%d", &client_id);
     sgx_status_t retval = SGX_SUCCESS;
 
     // client_id encryption
