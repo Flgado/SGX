@@ -27,5 +27,6 @@ enclave {
         int ocall_get_sealed_data_size(int client_id, [out] size_t* file_size);
         int ocall_read_sealed_data(int client_id, [out, size=data_size] uint8_t* data, size_t data_size);
         void ocall_print([in, string]const char* str);
+        void ocall_print_error([in, string] const char *str);
     };
 };

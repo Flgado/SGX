@@ -7,8 +7,12 @@
 #include <stdint.h>
 
 void ocall_print(const char *str) {
-    //printf("  ENCLAVE: %s", str);
-    printf("%s", str);
+    printf("  ENCLAVE: %s", str);
+}
+
+void ocall_print_error(const char *str) {
+    printf("\033[0;31m ENCLAVE ERROR: %s", str);
+    printf("\033[0;0m");
 }
 
 int ocall_write_sealed_data(uint32_t client_id, uint8_t *sealed_data, size_t sealed_data_size) {
@@ -22,13 +26,13 @@ int ocall_write_sealed_data(uint32_t client_id, uint8_t *sealed_data, size_t sea
 
     FILE *file = fopen(file_name, "wb");
     if (file == NULL) {
-        printf("Error opening file for writing\n");
+        printf("** error opening file %s for writing\n", file_name);
         return -1;
     }
 
     size_t num_written = fwrite(sealed_data, 1, sealed_data_size, file);
     if (num_written != sealed_data_size) {
-        printf("Error writing sealed data to file\n");
+        printf("** error writing sealed data to file %s\n", file_name);
         fclose(file);
         return -1;
     }
@@ -48,7 +52,7 @@ int ocall_get_sealed_data_size(uint32_t client_id, size_t *file_size) {
 
     FILE* file = fopen(file_name, "rb");
     if (file == NULL) {
-        printf("Error opening file\n");
+        printf("** error opening file %s\n", file_name);
         return -1;
     }
 
@@ -71,19 +75,18 @@ int ocall_read_sealed_data(uint32_t client_id, uint8_t* data, size_t data_size) 
     // Open the file for reading
     FILE* file = fopen(file_name, "rb");
     if (file == NULL) {
-        printf("Error opening file for reading\n");
+        printf("** error opening file %s for reading\n", file_name);
         return -1;
     }
 
     // Read the data from the file
     size_t num_read = fread(data, 1, data_size, file);
     if (num_read != data_size) {
-        printf("Error reading data from file\n");
+        printf("** error reading data from file %s\n", file_name);
         fclose(file);
         return -1;
     }
 
-    // Close the file
     fclose(file);
 
     return 0;
