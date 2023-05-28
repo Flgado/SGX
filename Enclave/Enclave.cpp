@@ -140,9 +140,8 @@ int get_card_from_client_id(uint32_t client_id, Card *card) {
     }
 
     uint8_t card_enclave_version = sealed_data[sealed_data_size - 1]; 
-    printf("enclave: version %d\n", card_enclave_version);
     if (card_enclave_version != ENCLAVE_VERSION) {
-        printf("** card was sealed with a different enclave version (please run a migration)**\n");
+        printf("** card was sealed with a different enclave version (please run a migration with --migrate)**\n");
         free(sealed_data);
         return SGX_ERROR_UNEXPECTED;
     }
@@ -154,7 +153,7 @@ int get_card_from_client_id(uint32_t client_id, Card *card) {
 
     retval = unseal(sealed_data, sealed_data_size, &unsealed, &unsealed_size, &aad, &aad_size);
     if (retval != SGX_SUCCESS) {
-        printf("error unsealing data: %d\n", retval);
+        printf("* error unsealing data: %d (you may need to run a migration, if the enclave has changed)\n", retval);
         free(sealed_data);
         return retval;
     }
@@ -490,7 +489,6 @@ sgx_status_t ecall_migration_prepare_record(
     }
 
     uint8_t card_enclave_version = sealed_data[sealed_data_size - 1]; 
-    printf("enclave: version %d\n", card_enclave_version);
     if (card_enclave_version != ENCLAVE_VERSION) {
         printf("** card was sealed with a different enclave version (please run a migration)**\n");
         return SGX_ERROR_UNEXPECTED;

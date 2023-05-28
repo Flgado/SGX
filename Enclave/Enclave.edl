@@ -32,5 +32,6 @@ enclave {
         int ocall_write_sealed_private_key([in, size=sealed_data_size] uint8_t *sealed_data, size_t sealed_data_size);
         int ocall_load_signature_private_key([out, size=sealed_data_size] uint8_t *sealed_data, size_t sealed_data_size);
         int ocall_get_signature_private_key_data_size([out] size_t* file_size);
+        void ocall_print_error([in, string] const char *str);
     };
 };
