@@ -17,6 +17,9 @@
 #include <dirent.h>
 #include <ctype.h>
 #include <getopt.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/stat.h>
 
 #define MATRIX_CARD_SIZE 64
 #define KEY_SIZE 16
@@ -26,6 +29,7 @@
 #define ECDSA256_SIGNATURE_R_SIZE 32
 #define ECDSA256_SIGNATURE_S_SIZE 32
 #define SIGNATURE_SIZE ECDSA256_PUBLICKEY_GX_SIZE + ECDSA256_PUBLICKEY_GY_SIZE
+#define ENCLAVE_PUBLIC_KEY_FILE "keys/pub"
 
 ECDSA256PublicKey enclave_public_key;
 
@@ -40,6 +44,9 @@ void handle_logs_opt(char* client_id_str, char* enclave_so);
 void handle_setup_card_opt(char *client_id, char* enclave_so);
 void handle_card_versions_opt(uint32_t version);
 void init_comm_keys(uint8_t *key);
+int save_enclave_public_key_into_file();
+int enclave_public_key_is_save();
+int read_enclave_public_key();
 
 int encrypt_data(const char* plaintext, size_t plaintext_len, uint8_t* key, uint8_t* ciphertext, uint8_t* tag);
 int is_number(const char *str);
@@ -101,6 +108,73 @@ int main(int argc, char *argv[]) {
         }
     }
     return 0;
+}
+
+
+int enclave_public_key_is_save() {
+     struct stat st = {0};
+    return stat(ENCLAVE_PUBLIC_KEY_FILE, &st);
+}
+
+int read_enclave_public_key()
+{
+    FILE* file = fopen(ENCLAVE_PUBLIC_KEY_FILE, "rb");
+    if (file == NULL) {
+        printf("Error opening the file.\n");
+        return 1;
+    }
+    
+    // Read the gx and gy arrays from the file
+    fread(enclave_public_key.gx, sizeof(uint8_t), ECDSA256_PUBLICKEY_GX_SIZE, file);
+    fread(enclave_public_key.gy, sizeof(uint8_t), ECDSA256_PUBLICKEY_GY_SIZE, file);
+    
+    // Close the file
+    fclose(file);
+
+    return 0;
+}
+
+int save_enclave_public_key_into_file()
+{
+    struct stat st = {0};
+    if (stat("keys", &st) == -1) {
+        mkdir("keys", 0700);
+    }
+    // Open the file for writing
+    FILE* file = fopen(ENCLAVE_PUBLIC_KEY_FILE, "wb");
+    if (file == NULL) {
+        printf("Error opening the file.\n");
+        return 1;
+    }
+    
+    // Write the gx and gy arrays to the file
+    fwrite(enclave_public_key.gx, sizeof(uint8_t), ECDSA256_PUBLICKEY_GX_SIZE, file);
+    fwrite(enclave_public_key.gy, sizeof(uint8_t), ECDSA256_PUBLICKEY_GY_SIZE, file);
+    
+    // Close the file
+    fclose(file);
+    
+    printf("Public key saved successfully.\n");
+    
+    return 0;
+}
+
+int get_enclave_public_key()
+{
+    sgx_status_t retval;
+    if(enclave_public_key_is_save() != -1)
+    {
+        ecall_load_existing_private_key(global_eid, &retval);
+        return read_enclave_public_key();
+    }
+
+    ecall_generate_ecc_key_pair(global_eid, &retval, &enclave_public_key, SIGNATURE_SIZE);
+     if (retval != SGX_SUCCESS) {
+        printf("Failed to create Ecdsa256 key pair. Error code: %d\n", retval);
+        return 1;
+    }
+
+    return save_enclave_public_key_into_file();
 }
 
 char **get_file_names_for_enclave_version(uint8_t version, int *count) {
@@ -337,8 +411,8 @@ void handle_validation_opt(char* client_id_str, char* coords, char* enclave_so) 
         return;
     }
 
-    ecall_generate_ecc_key_pair(global_eid, &retval, &enclave_public_key, SIGNATURE_SIZE);
-    if (retval != SGX_SUCCESS) {
+    int enclave_public_key_generated = get_enclave_public_key();
+    if (enclave_public_key_generated != 0) {
         printf("Failed to create Ecdsa256 key pair. Error code: %d\n", retval);
         return;
     }
@@ -611,9 +685,9 @@ static bool validate_signature(int* result, const unsigned char* data, uint32_t 
 void init_comm_keys(uint8_t *key) {
     sgx_status_t retval;
 
-    ecall_generate_ecc_key_pair(global_eid, &retval, &enclave_public_key, SIGNATURE_SIZE);
-    if (retval != SGX_SUCCESS) {
-        printf("Failed to create ECDSA256 key pair. Error code: %d\n", retval);
+    int enclave_public_key_generated = get_enclave_public_key();
+    if (enclave_public_key_generated != 0) {
+        printf("Failed to create Ecdsa256 key pair. Error code: %d\n", retval);
         return;
     }
 

@@ -88,3 +88,77 @@ int ocall_read_sealed_data(uint32_t client_id, uint8_t* data, size_t data_size) 
 
     return 0;
 }
+
+int ocall_get_signature_private_key_data_size(size_t *file_size) {
+    struct stat st = {0};
+    if (stat("keys/priv", &st) == -1) {
+       return -1;
+    }
+
+    // Open the file for reading
+    FILE* file = fopen("keys/priv", "rb");
+    if (file == NULL) {
+        printf("Error opening file for reading\n");
+        return -1;
+    }
+
+    fseek(file, 0, SEEK_END);
+    *file_size = ftell(file);
+    fclose(file);
+
+    return 0;
+}
+
+int ocall_load_signature_private_key(uint8_t *sealed_data, size_t sealed_data_size) {
+    struct stat st = {0};
+    if (stat("keys/priv", &st) == -1) {
+       return -1;
+    }
+
+    // Open the file for reading
+    FILE* file = fopen("keys/priv", "rb");
+    if (file == NULL) {
+        printf("Error opening file for reading\n");
+        return -1;
+    }
+
+    // Read the data from the file
+    size_t num_read = fread(sealed_data, 1, sealed_data_size, file);
+    if (num_read != sealed_data_size) {
+        printf("Error reading data from file\n");
+        fclose(file);
+        return -1;
+    }
+
+    // Close the file
+    fclose(file);
+
+    return 0;
+}
+
+
+int ocall_write_sealed_private_key(uint8_t *sealed_data, size_t sealed_data_size) {
+    struct stat st = {0};
+    if (stat("keys", &st) == -1) {
+        mkdir("keys", 0700);
+    }
+
+    char file_name[20];
+    sprintf(file_name, "keys/%s", "priv");
+
+    FILE *file = fopen(file_name, "wb");
+    if (file == NULL) {
+        printf("Error opening file for writing\n");
+        return -1;
+    }
+
+    size_t num_written = fwrite(sealed_data, 1, sealed_data_size, file);
+    if (num_written != sealed_data_size) {
+        printf("Error writing sealed data to file\n");
+        fclose(file);
+        return -1;
+    }
+
+    fclose(file);
+    return 0;
+}
