@@ -20,6 +20,7 @@ enclave {
         public void ecall_process_message3([in] const sgx_dh_msg3_t *msg3, [out] sgx_status_t *dh_status);
 
         public sgx_status_t ecall_generate_ecc_key_pair([out, size=key_size] ECDSA256PublicKey* enclave_public_key, size_t key_size);
+        public sgx_status_t ecall_load_existing_private_key(void);
     };
 
     untrusted {
@@ -28,5 +29,8 @@ enclave {
         int ocall_read_sealed_data(int client_id, [out, size=data_size] uint8_t* data, size_t data_size);
         void ocall_print([in, string]const char* str);
         void ocall_print_error([in, string] const char *str);
+        int ocall_write_sealed_private_key([in, size=sealed_data_size] uint8_t *sealed_data, size_t sealed_data_size);
+        int ocall_load_signature_private_key([out, size=sealed_data_size] uint8_t *sealed_data, size_t sealed_data_size);
+        int ocall_get_signature_private_key_data_size([out] size_t* file_size);
     };
 };

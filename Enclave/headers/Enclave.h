@@ -14,7 +14,7 @@
  * Enclave's version. This variable should be updated in every version
  * of the enclave, in increments of 1
 */
-#define ENCLAVE_VERSION 3
+#define ENCLAVE_VERSION 1
 
 /*
  * Policy for the sealing key. If we use MRENCLAVE, subsequent versions

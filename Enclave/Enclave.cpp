@@ -153,6 +153,7 @@ int get_card_from_client_id(uint32_t client_id, Card *card) {
 
     retval = unseal(sealed_data, sealed_data_size, &unsealed, &unsealed_size, &aad, &aad_size);
     if (retval != SGX_SUCCESS) {
+
         printf("* error unsealing data: %d (you may need to run a migration, if the enclave has changed)\n", retval);
         free(sealed_data);
         return retval;
@@ -398,6 +399,10 @@ sgx_status_t ecall_validate_coords(
     size_t num_coords = coords_param->cipher_size / 4;
 
     *result = 1;
+    if (num_coords == 0) {
+        return SGX_ERROR_INVALID_PARAMETER;
+    }
+
     for (size_t i = 0; i < num_coords; i++) {
         if(!coords_are_valid(coords[i])) {
             return SGX_ERROR_INVALID_PARAMETER;
@@ -501,7 +506,7 @@ sgx_status_t ecall_migration_prepare_record(
 
     retval = unseal(sealed_data, sealed_data_size, &unsealed, &unsealed_size, &aad, &aad_size);
     if (retval != SGX_SUCCESS) {
-        printf("Error unsealing data: %d\n", retval);
+        printf("* error unsealing data (you may need to migrate, if the enclave's version is different): %d\n", retval);
         free(sealed_data);
         return retval;
     }

@@ -5,6 +5,7 @@
 #include <string>
 
 int parse_coords(char const *input, struct Coords **coords_arr);
+int file_exists_for_client(const char* client_id);
 void print_usage(char *argv[]);
 char **get_file_names_for_enclave_version(uint8_t version, int *count);
 void print_red(char *format, ...);

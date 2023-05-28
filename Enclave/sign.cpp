@@ -10,10 +10,12 @@
 #include "headers/encryption.h"
 #include "headers/utils.h"
 
+#define PRIVATE_KEY_SIZE 32
+#define KEY_POLICY SGX_KEYPOLICY_MRENCLAVE
+
 sgx_ec256_private_t enclave_private_key;
 
-sgx_status_t sign(
-    const unsigned char* msg, ECDSA256Signature *enclave_signature, size_t message_size) {
+sgx_status_t sign(const unsigned char* msg, ECDSA256Signature *enclave_signature, size_t message_size) {
 
     sgx_ecc_state_handle_t ecc_handle;
 
@@ -33,6 +35,35 @@ sgx_status_t sign(
 
     // Close ECC context
     status = sgx_ecc256_close_context(ecc_handle);
+
+    // defaults
+    sgx_attributes_t attributes;
+    attributes.xfrm = SGX_XFRM_RESERVED;
+    attributes.flags = 0xFF0000000000000B;
+
+    uint32_t sealed_data_size = sgx_calc_sealed_data_size(0, PRIVATE_KEY_SIZE);
+
+    sgx_sealed_data_t* sealed_data = (sgx_sealed_data_t*)malloc(sealed_data_size);
+
+    status = sgx_seal_data_ex(
+        KEY_POLICY,
+        attributes,
+        0,
+        0, 
+        NULL, 
+        PRIVATE_KEY_SIZE, 
+        enclave_private_key.r, 
+        sealed_data_size, 
+        sealed_data
+    );
+
+    int ocall_return;
+
+    if(ocall_write_sealed_private_key(&ocall_return, (uint8_t*)sealed_data, sealed_data_size) != 0)
+    {
+        printf("Failed to Save sealed private key");
+    }
+
     return SGX_SUCCESS;
 }
 
@@ -64,4 +95,35 @@ sgx_status_t ecall_generate_ecc_key_pair(ECDSA256PublicKey *public_key_to_parse,
     status = sgx_ecc256_close_context(ecc_handle);
 
     return SGX_SUCCESS;
+}
+
+sgx_status_t ecall_load_existing_private_key(void) {
+    int ocall_return = 0;
+
+    size_t sealed_data_size = 0;
+    ocall_get_signature_private_key_data_size(&ocall_return, &sealed_data_size);
+
+    uint8_t *sealed_data = (uint8_t*) malloc(sealed_data_size);
+    if (sealed_data == NULL) {
+        printf("error allocating memory for sealed data in get_card_from_client_id()\n");
+        return SGX_ERROR_UNEXPECTED;
+    }
+
+    sgx_status_t ocall_status = ocall_load_signature_private_key(&ocall_return, sealed_data, sealed_data_size);
+    if (ocall_status != SGX_SUCCESS || ocall_return != 0) {
+        printf("error calling ocall_read_sealed_data(): %d\n", ocall_status);
+        free(sealed_data);
+        return SGX_ERROR_UNEXPECTED;
+    }
+
+    uint32_t size = 32;
+    sgx_sealed_data_t* sealed_data_ptr = (sgx_sealed_data_t*)sealed_data;
+
+    sgx_status_t retval = sgx_unseal_data(sealed_data_ptr, NULL, 0, enclave_private_key.r, &size);
+
+    if (retval != SGX_SUCCESS) {
+        printf("* error unsealing data (you may need to migrate, if the enclave's version is different): %d\n", retval);
+        free(sealed_data);
+        return retval;
+    }
 }

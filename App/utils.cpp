@@ -9,6 +9,8 @@
 #include <string>
 #include <dirent.h>
 #include <stdarg.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include "Enclave_u.h"
 
@@ -172,4 +174,14 @@ char **get_file_names_for_enclave_version(uint8_t version, int *count) {
     closedir(dir); 
 
     return file_names;
+}
+
+int file_exists_for_client(const char* client_id) {
+    char file_name[20];
+    sprintf(file_name, "cards/%s", client_id);
+
+    int ret = access(file_name, F_OK);
+    if (ret == 0) return 1;
+
+    return 0;
 }

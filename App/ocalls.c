@@ -16,13 +16,40 @@ void ocall_print_error(const char *str) {
 }
 
 int ocall_write_sealed_data(uint32_t client_id, uint8_t *sealed_data, size_t sealed_data_size) {
-    struct stat st = {0};
-    if (stat("cards", &st) == -1) {
-        mkdir("cards", 0700);
-    }
-
     char file_name[20];
     sprintf(file_name, "cards/%d", client_id);
+    return write_data((const char*) "cards", file_name, sealed_data, sealed_data_size);
+}
+
+int ocall_write_sealed_private_key(uint8_t *sealed_data, size_t sealed_data_size) {
+    return write_data((const char*) "keys", (const char*) "keys/priv", sealed_data, sealed_data_size);
+}
+
+int ocall_get_signature_private_key_data_size(size_t *file_size) {
+    return get_file_size((const char *) "keys/priv", file_size);
+}
+
+int ocall_get_sealed_data_size(uint32_t client_id, size_t *file_size) {
+    char file_name[20];
+    sprintf(file_name, "cards/%d", client_id);
+    return get_file_size((const char *) file_name, file_size);
+}
+
+int ocall_read_sealed_data(uint32_t client_id, uint8_t* data, size_t data_size) {
+    char file_name[20];
+    sprintf(file_name, "cards/%d", client_id);
+    return read_data_from_file((const char *) file_name, data, data_size);
+}
+
+int ocall_load_signature_private_key(uint8_t *sealed_data, size_t sealed_data_size) {
+    return read_data_from_file((const char *) "keys/priv", sealed_data, sealed_data_size);
+}
+
+int write_data(const char *base_folder, const char *file_name, uint8_t *data, size_t data_size) {
+    struct stat st = {0};
+    if (stat(base_folder, &st) == -1) {
+        mkdir(base_folder, 0700);
+    }
 
     FILE *file = fopen(file_name, "wb");
     if (file == NULL) {
@@ -30,9 +57,9 @@ int ocall_write_sealed_data(uint32_t client_id, uint8_t *sealed_data, size_t sea
         return -1;
     }
 
-    size_t num_written = fwrite(sealed_data, 1, sealed_data_size, file);
-    if (num_written != sealed_data_size) {
-        printf("** error writing sealed data to file %s\n", file_name);
+    size_t num_written = fwrite(data, 1, data_size, file);
+    if (num_written != data_size) {
+        printf("** error writing data to file %s\n", file_name);
         fclose(file);
         return -1;
     }
@@ -41,18 +68,16 @@ int ocall_write_sealed_data(uint32_t client_id, uint8_t *sealed_data, size_t sea
     return 0;
 }
 
-int ocall_get_sealed_data_size(uint32_t client_id, size_t *file_size) {
+int get_file_size(const char *file_name, size_t *file_size) {
     struct stat st = {0};
-    if (stat("cards", &st) == -1) {
-        mkdir("cards", 0700);
+    if (stat(file_name, &st) == -1) {
+       return -1;
     }
 
-    char file_name[20];
-    sprintf(file_name, "cards/%d", client_id);
-
+    // Open the file for reading
     FILE* file = fopen(file_name, "rb");
     if (file == NULL) {
-        printf("** error opening file %s\n", file_name);
+        printf("Error opening file for reading\n");
         return -1;
     }
 
@@ -63,15 +88,7 @@ int ocall_get_sealed_data_size(uint32_t client_id, size_t *file_size) {
     return 0;
 }
 
-int ocall_read_sealed_data(uint32_t client_id, uint8_t* data, size_t data_size) {
-    struct stat st = {0};
-    if (stat("cards", &st) == -1) {
-        mkdir("cards", 0700);
-    }
-
-    char file_name[20];
-    sprintf(file_name, "cards/%d", client_id);
-
+int read_data_from_file(const char *file_name, uint8_t *data, size_t data_size) {
     // Open the file for reading
     FILE* file = fopen(file_name, "rb");
     if (file == NULL) {
